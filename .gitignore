@@ -1,0 +1,14 @@
+Design.md
+Development.md
+demo.md
+Rubic.md
+data/logs/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.venv
+env/
+venv/
+*.log
+backend/.env

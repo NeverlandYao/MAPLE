@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MAPLE | 评估仪表盘</title>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffe066",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#102217",
+                        "surface-dark": "#1c2a23",
+                        "surface-dark-hover": "#25352d",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Spline Sans", "Microsoft YaHei", "PingFang SC", sans-serif;
+        }.custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 224, 102, 0.05); 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 224, 102, 0.2); 
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 224, 102, 0.4); 
+        }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111814] dark:text-white overflow-hidden h-screen flex flex-col">
+<header class="flex-none flex items-center justify-between whitespace-nowrap border-b border-solid border-[#28392f] px-6 py-3 bg-surface-dark/50 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4 text-white">
+<div class="size-8 text-primary">
+<svg class="w-full h-full" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 11.2727C44 14.0109 39.8386 16.3957 33.69 17.6364C39.8386 18.877 44 21.2618 44 24C44 26.7382 39.8386 29.123 33.69 30.3636C39.8386 31.6043 44 33.9891 44 36.7273C44 40.7439 35.0457 44 24 44C12.9543 44 4 40.7439 4 36.7273C4 33.9891 8.16144 31.6043 14.31 30.3636C8.16144 29.123 4 26.7382 4 24C4 21.2618 8.16144 18.877 14.31 17.6364C8.16144 16.3957 4 14.0109 4 11.2727C4 7.25611 12.9543 4 24 4C35.0457 4 44 7.25611 44 11.2727Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em] hidden sm:block">MAPLE | 评估仪表盘</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<div class="hidden md:flex items-center gap-2 bg-[#28392f] rounded-full pl-1 pr-4 py-1">
+<div class="bg-primary/20 rounded-full p-1 w-8 h-8 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm">person</span>
+</div>
+<span class="text-sm font-medium">Yao</span>
+<span class="material-symbols-outlined text-base opacity-50">expand_more</span>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center justify-center gap-2 overflow-hidden rounded-full h-9 px-4 bg-primary text-[#111814] text-sm font-bold leading-normal tracking-[0.015em] transition-transform hover:scale-105">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span class="truncate hidden sm:inline">导出报告</span>
+</button>
+<button class="flex items-center justify-center overflow-hidden rounded-full h-9 w-9 bg-[#28392f] text-white transition-colors hover:bg-primary/20">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-[#28392f]" data-alt="Teacher profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAF9N7ROI_r2SBT1VZNuE_RdXiTLsDpYt_vzZF5abxZc58W5CEeSpm6Uf_gQAiAKPKitMPR5zx-ozkh_fL4koWSowvDKLilbTC51_09LwyCp0mTRGoUV-vzeW68RDISOFcoLC70aZY_9oQUEcJPUCDK0GBO0ymJKUWcll31ghOloyaNUrHSNLjIn7-mwizFvtVdM0_eOJi3ZLM7wLeILNlU4SAWzgn65tmLAC4Z47PsJJ31w1S6e0pdU3DF7slMjF4FfhofAgvpqUo9");'></div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar p-6 lg:p-10 relative">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[#9db9a8] text-sm font-medium uppercase tracking-wider">AI素养评估</span>
+<span class="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full border border-primary/20">进行中</span>
+</div>
+<h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">学生表现概览</h1>
+</div>
+<div class="flex gap-2 bg-surface-dark p-1.5 rounded-full border border-[#28392f]">
+<button class="px-4 py-1.5 rounded-full bg-primary text-[#111814] text-sm font-bold shadow-lg shadow-primary/20">
+                        本次会话
+                    </button>
+<button class="px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+                        本学期
+                    </button>
+<button class="px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+                        历史记录
+                    </button>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-[500px]">
+<div class="xl:col-span-2 bg-surface-dark border border-[#28392f] rounded-[2rem] p-8 flex flex-col relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6 z-10">
+<div>
+<h3 class="text-xl font-bold text-white mb-1">Maple雷达分析</h3>
+<p class="text-[#9db9a8] text-sm">人机协作五维可视化</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-4xl font-bold text-white tracking-tighter" id="total-score">--<span class="text-lg text-[#9db9a8] font-normal">/100</span></span>
+<div class="flex items-center text-primary text-sm font-medium mt-1">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+                            AI 实时评估
+                        </div>
+</div>
+</div>
+<div class="flex-1 flex items-center justify-center relative min-h-[350px]">
+<div class="relative w-full max-w-[500px] aspect-square">
+<canvas id="radarChart"></canvas>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-1 gap-4 content-start">
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-colors border border-[#28392f] rounded-2xl p-5 flex flex-col gap-1 group cursor-pointer">
+<div class="flex justify-between items-center">
+<p class="text-[#9db9a8] text-xs font-bold uppercase tracking-wider">技术驾驭</p>
+<span class="material-symbols-outlined text-[#9db9a8] group-hover:text-primary text-lg">code</span>
+</div>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-white text-2xl font-bold" id="score-technical">--</span>
+</div>
+<p class="text-[#9db9a8]/70 text-xs mt-1">提示词工程能力</p>
+</div>
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-colors border border-primary/40 shadow-[0_0_15px_rgba(255,224,102,0.1)] rounded-2xl p-5 flex flex-col gap-1 group cursor-pointer">
+<div class="flex justify-between items-center">
+<p class="text-primary text-xs font-bold uppercase tracking-wider">批判评估</p>
+<span class="material-symbols-outlined text-primary text-lg">verified_user</span>
+</div>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-white text-2xl font-bold" id="score-evaluation">--</span>
+</div>
+<p class="text-[#9db9a8]/70 text-xs mt-1">真伪辨识能力</p>
+</div>
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-colors border border-[#28392f] rounded-2xl p-5 flex flex-col gap-1 group cursor-pointer">
+<div class="flex justify-between items-center">
+<p class="text-[#9db9a8] text-xs font-bold uppercase tracking-wider">协同创造</p>
+<span class="material-symbols-outlined text-[#9db9a8] group-hover:text-primary text-lg">lightbulb</span>
+</div>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-white text-2xl font-bold" id="score-cocreativity">--</span>
+</div>
+<p class="text-[#9db9a8]/70 text-xs mt-1">思维拓展指标</p>
+</div>
+<div class="bg-surface-dark hover:bg-surface-dark-hover transition-colors border border-[#28392f] rounded-2xl p-5 flex flex-col gap-1 group cursor-pointer hidden xl:flex">
+<div class="flex justify-between items-center">
+<p class="text-[#9db9a8] text-xs font-bold uppercase tracking-wider">伦理责任</p>
+<span class="material-symbols-outlined text-[#9db9a8] group-hover:text-primary text-lg">balance</span>
+</div>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="text-white text-2xl font-bold" id="score-ethics">--</span>
+</div>
+<p class="text-[#9db9a8]/70 text-xs mt-1">合规使用与安全</p>
+</div>
+</div>
+</div>
+</main>
+<aside class="w-full md:w-[400px] lg:w-[440px] bg-surface-dark border-l border-[#28392f] flex flex-col h-full shadow-2xl z-20">
+<div class="p-6 border-b border-[#28392f] bg-surface-dark">
+<div class="flex items-center gap-3 mb-2">
+<div class="bg-primary/20 p-2 rounded-lg text-primary">
+<span class="material-symbols-outlined">description</span>
+</div>
+<h2 class="text-xl font-bold text-white">AI 评价</h2>
+</div>
+<p class="text-[#9db9a8] text-sm leading-relaxed">
+                基于最近一次对话的素养分析。
+            </p>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+<div class="bg-primary/5 border border-primary/20 rounded-2xl p-5 relative">
+<span class="absolute -top-3 left-4 bg-[#28392f] text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-primary/20">AI 总结</span>
+<p class="text-white text-sm leading-6" id="ai-comments">
+                    请从下方列表选择一个会话进行分析。
+                </p>
+</div>
+
+            <div class="space-y-3">
+                <h3 class="text-white text-sm font-bold">最近会话</h3>
+                <div id="session-list" class="space-y-2">
+                    <!-- Sessions will be loaded here -->
+                    <div class="animate-pulse flex space-x-4">
+                        <div class="flex-1 space-y-2 py-1">
+                            <div class="h-4 bg-[#28392f] rounded w-3/4"></div>
+                            <div class="h-4 bg-[#28392f] rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+</div>
+</aside>
+</div>
+<script>
+    // Initialize Chart.js Radar Chart
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    const radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['技术驾驭', '批判评估', '协同创造', '伦理责任'],
+            datasets: [{
+                label: '学生表现',
+                data: [0, 0, 0, 0], // Initial Data
+                backgroundColor: 'rgba(255, 224, 102, 0.3)',
+                borderColor: '#ffe066',
+                borderWidth: 2,
+                pointBackgroundColor: '#ffe066',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#ffe066'
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    angleLines: { color: '#28392f' },
+                    grid: { color: '#28392f' },
+                    pointLabels: {
+                        color: '#fff',
+                        font: { size: 14, family: "'Spline Sans', sans-serif" }
+                    },
+                    ticks: { display: false, max: 100, min: 0 }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // Load Sessions on Start
+    document.addEventListener('DOMContentLoaded', fetchSessions);
+
+    async function fetchSessions() {
+        const listContainer = document.getElementById('session-list');
+        try {
+            const response = await fetch('http://localhost:8000/api/chat/sessions');
+            if (!response.ok) throw new Error('Failed to load sessions');
+            
+            const sessions = await response.json();
+            
+            listContainer.innerHTML = ''; // Clear loading state
+            
+            if (sessions.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500 text-xs">暂无历史会话</p>';
+                return;
+            }
+
+            sessions.forEach(session => {
+                const date = new Date(session.timestamp * 1000).toLocaleString('zh-CN', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                
+                const item = document.createElement('div');
+                item.className = "bg-[#28392f]/50 hover:bg-[#28392f] border border-[#28392f] hover:border-primary/30 rounded-xl p-3 cursor-pointer transition-all group";
+                item.onclick = () => analyzeSession(session.session_id, item);
+                item.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-white text-xs font-bold truncate w-2/3">${session.session_id}</span>
+                        <span class="text-[#9db9a8] text-[10px]">${date}</span>
+                    </div>
+                    <p class="text-gray-400 text-xs line-clamp-2 group-hover:text-gray-300 transition-colors">
+                        ${session.preview}
+                    </p>
+                `;
+                listContainer.appendChild(item);
+            });
+
+        } catch (error) {
+            console.error(error);
+            listContainer.innerHTML = '<p class="text-red-400 text-xs">加载失败，请检查后端服务</p>';
+        }
+    }
+
+    async function analyzeSession(sessionId, element) {
+        // UI Feedback
+        const originalContent = element.innerHTML;
+        element.innerHTML = `
+            <div class="flex items-center justify-center py-2 gap-2 text-primary">
+                <span class="material-symbols-outlined animate-spin text-sm">refresh</span>
+                <span class="text-xs font-bold">正在分析...</span>
+            </div>
+        `;
+        
+        // Disable all other items
+        const allItems = document.querySelectorAll('#session-list > div');
+        allItems.forEach(el => el.classList.add('pointer-events-none', 'opacity-50'));
+        element.classList.remove('opacity-50');
+
+        try {
+            const response = await fetch('http://localhost:8000/api/analyze/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+
+            if (!response.ok) throw new Error('Analysis failed');
+
+            const data = await response.json();
+            updateDashboard(data);
+            
+            // Highlight active
+            allItems.forEach(el => {
+                el.classList.remove('bg-primary/20', 'border-primary');
+                el.classList.add('bg-[#28392f]/50', 'border-[#28392f]');
+            });
+            element.classList.remove('bg-[#28392f]/50', 'border-[#28392f]');
+            element.classList.add('bg-primary/10', 'border-primary');
+
+        } catch (error) {
+            console.error(error);
+            alert('分析失败: ' + error.message);
+        } finally {
+            // Restore UI (but keep highlight if successful logic was added above, actually simpler to just restore content)
+            // Ideally we keep the preview but show it's active.
+            // For simplicity, let's just reload the list content for that item but keep active style
+            element.innerHTML = originalContent; 
+            allItems.forEach(el => el.classList.remove('pointer-events-none', 'opacity-50'));
+        }
+    }
+
+    function updateDashboard(data) {
+        // Map new backend keys to frontend display
+        // Backend keys: know_understand, use_apply, evaluate_create, ethics
+        // Frontend IDs: score-technical, score-evaluation, score-cocreativity, score-ethics
+        
+        // Use 0 for null values (No Evidence = 0)
+        const formatScore = (val) => val === null ? 0 : val;
+        
+        // Helper to update score and tooltip/reasoning
+        const updateScoreCard = (id, score, reasoning) => {
+            const el = document.getElementById(id);
+            el.innerText = formatScore(score);
+            // Find parent card to add tooltip or reasoning display
+            // For simplicity, let's append a small text below the subtitle if reasoning exists
+            const card = el.closest('.group');
+            let reasoningEl = card.querySelector('.reasoning-text');
+            if (!reasoningEl) {
+                reasoningEl = document.createElement('p');
+                reasoningEl.className = "reasoning-text text-gray-500 text-[10px] mt-2 border-t border-white/5 pt-2 leading-tight hidden group-hover:block animate-[fadeIn_0.3s_ease-out]";
+                card.appendChild(reasoningEl);
+            }
+            if (reasoning) {
+                reasoningEl.innerText = reasoning;
+            } else {
+                reasoningEl.innerText = "无详细评估依据";
+            }
+        };
+
+        updateScoreCard('score-technical', data.scores.use_apply, data.reasoning?.use_apply);
+        updateScoreCard('score-evaluation', data.scores.know_understand, data.reasoning?.know_understand);
+        updateScoreCard('score-cocreativity', data.scores.evaluate_create, data.reasoning?.evaluate_create);
+        updateScoreCard('score-ethics', data.scores.ethics, data.reasoning?.ethics);
+
+        // Calculate Total Score (Sum of valid scores)
+        // If all are null (rare), 0.
+        let sum = 0;
+        let count = 0;
+        
+        // Iterate over the specific keys we care about
+        const keys = ['use_apply', 'know_understand', 'evaluate_create', 'ethics'];
+        keys.forEach(key => {
+            if (data.scores[key] !== null) {
+                sum += data.scores[key];
+                // We sum them up. Since each is out of 25, total is out of 100.
+                // We don't average them anymore because it's a 100-point scale sum.
+                // Wait, previous request said "Total 100". 
+                // Rubric says "0-25 per dimension".
+                // So Total = Sum of all 4 dimensions.
+            }
+        });
+        
+        // If some are null, do we scale up? Or just treat as 0?
+        // "If irrelevant, return null". If null, it shouldn't count against them? 
+        // Or should we treat it as "0" evidence?
+        // In "Evidence Based", No Evidence = Low Score (0-5).
+        // Null is explicitly "Irrelevant".
+        // Let's treat null as 0 for the Sum to keep it simple out of 100.
+        // OR: If a dimension is null, the max score is reduced? e.g. out of 75.
+        // Let's stick to Sum for now, assuming usually all 4 are present or we treat null as 0.
+        
+        document.getElementById('total-score').innerHTML = sum + '<span class="text-lg text-[#9db9a8] font-normal">/100</span>';
+
+        // Update Comments
+        const commentsDiv = document.getElementById('ai-comments');
+        commentsDiv.innerText = data.comments;
+
+        // Update Chart
+        // Radar chart needs values. Convert null to 0.
+        const radarValues = [
+            data.scores.use_apply || 0,        // Technical
+            data.scores.know_understand || 0,  // Critical/Knowledge
+            data.scores.evaluate_create || 0,  // Co-creation
+            data.scores.ethics || 0            // Ethics
+        ];
+        radarChart.data.datasets[0].data = radarValues;
+        radarChart.update();
+    }
+</script>
+</body></html>

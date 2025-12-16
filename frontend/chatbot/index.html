@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MAPLE</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffe066",
+                        "background-light": "#fffbeb",
+                        "background-dark": "#1c1917",
+                        "surface-dark": "#292524",
+                        "surface-dark-hover": "#44403c",
+                        "surface-border": "#44403c",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #44403c;
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d6b015;
+        }
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        
+        /* Markdown Styles for Message Content */
+        .message-content ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
+        .message-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+        .message-content p { margin-bottom: 0.5rem; }
+        .message-content p:last-child { margin-bottom: 0; }
+        .message-content a { color: #ffe066; text-decoration: underline; }
+        .message-content blockquote { border-left: 4px solid #44403c; padding-left: 1rem; font-style: italic; color: #9ca3af; }
+        .message-content h1, .message-content h2, .message-content h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #fff; }
+        .message-content pre { background: #1c1917; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; border: 1px solid #44403c; }
+        .message-content code { font-family: monospace; }
+        
+        /* KaTeX Overrides for Dark Mode */
+        .katex-display { 
+            overflow-x: auto; 
+            overflow-y: hidden;
+            padding: 0.5rem 0;
+        }
+        .katex { font-size: 1.1em; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display h-screen w-full overflow-hidden flex flex-col md:flex-row antialiased selection:bg-primary selection:text-background-dark">
+<div class="md:hidden flex items-center justify-between p-4 border-b border-surface-border bg-background-dark">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">eco</span>
+<span class="font-bold text-lg">MAPLE</span>
+</div>
+<button class="text-white">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+<aside class="hidden md:flex w-72 flex-col justify-between border-r border-surface-border bg-[#171512] h-full transition-all duration-300">
+<div class="flex flex-col gap-6 p-6">
+<div class="flex items-center gap-4 group cursor-help">
+<div class="relative flex items-center justify-center size-12 rounded-full bg-primary/10 border border-primary/20 transition-all duration-500 group-hover:bg-primary/20 group-hover:scale-105">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform duration-500 group-hover:rotate-12">eco</span>
+<div class="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-20"></div>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-tight">MAPLE 实时状态</h1>
+<p class="text-primary text-xs font-medium uppercase tracking-wider flex items-center gap-1">
+<span class="size-1.5 rounded-full bg-primary inline-block"></span>
+                        高质量
+                    </p>
+</div>
+</div>
+<button class="flex w-full items-center justify-center gap-2 rounded-full h-12 bg-primary text-background-dark text-sm font-bold shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)] hover:scale-[1.02] transition-all duration-200">
+<span class="material-symbols-outlined">add</span>
+<span>新会话</span>
+</button>
+<nav class="flex flex-col gap-2 mt-2">
+<div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">今天</div>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full bg-surface-dark border border-surface-border text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-primary text-[20px]">leaf_spark</span>
+<span class="text-sm font-medium truncate">微积分极限</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-gray-400 hover:bg-surface-dark/50 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">history_edu</span>
+<span class="text-sm font-medium truncate">论文构思</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-full text-gray-400 hover:bg-surface-dark/50 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">schedule</span>
+<span class="text-sm font-medium truncate">罗马历史</span>
+</a>
+</nav>
+</div>
+<div class="p-6 border-t border-surface-border flex flex-col gap-2">
+<button class="flex items-center gap-3 px-4 py-3 rounded-full text-gray-400 hover:bg-surface-dark/50 hover:text-white transition-colors w-full text-left">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">设置</span>
+</button>
+<div class="flex items-center gap-3 px-4 py-3 rounded-full hover:bg-surface-dark/50 cursor-pointer transition-colors">
+<div class="size-8 rounded-full bg-gradient-to-br from-orange-400 to-yellow-600" data-alt="User avatar with gradient"></div>
+<div class="flex flex-col">
+<p class="text-white text-sm font-medium">Hi！Yao</p>
+<p class="text-xs text-gray-500">For Free</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full relative min-w-0">
+        <!-- Portal View -->
+        <div id="portal-view" class="flex flex-col items-center justify-center h-full w-full p-6 animate-[fadeIn_0.5s_ease-out]">
+            <div class="w-full max-w-3xl flex flex-col gap-10">
+                <!-- Greeting -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="material-symbols-outlined text-4xl text-primary animate-pulse">sparkle</span>
+                        <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-primary bg-clip-text text-transparent">Hi Yao</h1>
+                    </div>
+                    <h2 class="text-4xl font-semibold text-gray-400">Where should we start?</h2>
+                </div>
+
+                <!-- Input Area -->
+                <div class="relative group w-full">
+                     <div class="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-[2rem] opacity-50 blur transition duration-500 group-hover:opacity-100"></div>
+                     <div class="relative flex flex-col bg-[#292524] rounded-[2rem] p-4 border border-surface-border shadow-2xl transition-all focus-within:border-primary/50 focus-within:bg-[#1c1917]">
+                        <input id="portal-input" class="w-full bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 text-xl px-4 py-4 font-display" placeholder="Ask MAPLE..." type="text" autocomplete="off"/>
+                        
+                        <div class="flex items-center justify-between px-2 mt-2">
+                             <div class="flex gap-2">
+                                 <button class="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                                     <span class="material-symbols-outlined text-[20px]">add</span>
+                                 </button>
+                                 <button class="flex items-center gap-1 px-3 py-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors text-sm font-medium">
+                                     <span class="material-symbols-outlined text-[18px]">extension</span>
+                                     <span>Tools</span>
+                                 </button>
+                             </div>
+                             <div class="flex items-center gap-3">
+                                 <div class="flex items-center gap-1 text-gray-500 text-sm font-medium">
+                                     <span>Thinking</span>
+                                     <span class="material-symbols-outlined text-[16px]">expand_more</span>
+                                 </div>
+                                 <button class="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                                     <span class="material-symbols-outlined text-[20px]">mic</span>
+                                 </button>
+                             </div>
+                        </div>
+                     </div>
+                </div>
+                
+                <!-- Quick Prompts -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <button class="text-left p-4 rounded-2xl bg-surface-dark border border-surface-border hover:bg-surface-dark-hover hover:border-primary/30 transition-all group" onclick="sendPortalMessage('解释微积分中的导数概念')">
+                        <span class="material-symbols-outlined text-primary mb-2">school</span>
+                        <p class="text-gray-200 font-medium">解释导数</p>
+                        <p class="text-gray-500 text-xs mt-1">微积分基础概念</p>
+                    </button>
+                    <button class="text-left p-4 rounded-2xl bg-surface-dark border border-surface-border hover:bg-surface-dark-hover hover:border-primary/30 transition-all group" onclick="sendPortalMessage('帮我构思一篇关于AI的论文')">
+                        <span class="material-symbols-outlined text-blue-400 mb-2">edit_note</span>
+                        <p class="text-gray-200 font-medium">论文构思</p>
+                        <p class="text-gray-500 text-xs mt-1">AI 与教育</p>
+                    </button>
+                    <button class="text-left p-4 rounded-2xl bg-surface-dark border border-surface-border hover:bg-surface-dark-hover hover:border-primary/30 transition-all group" onclick="sendPortalMessage('罗马帝国衰落的原因是什么？')">
+                        <span class="material-symbols-outlined text-orange-400 mb-2">history_edu</span>
+                        <p class="text-gray-200 font-medium">历史问答</p>
+                        <p class="text-gray-500 text-xs mt-1">罗马帝国</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat View (Hidden by default) -->
+        <div id="chat-view" class="hidden flex-col h-full w-full">
+            <header class="flex-none h-16 border-b border-surface-border flex items-center justify-between px-6 lg:px-10 bg-background-dark/95 backdrop-blur-sm z-20">
+<div class="flex items-center gap-4">
+<h2 class="text-white text-lg font-bold">微积分：理解导数</h2>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-surface-dark border border-surface-border text-gray-400 uppercase tracking-wide">数学-101</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-2 bg-surface-dark rounded-full p-1 pl-4 border border-surface-border">
+<span class="text-xs font-medium text-gray-300">学习模式</span>
+<button class="bg-primary text-background-dark rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">school</span>
+                        活跃
+                    </button>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full bg-surface-dark text-white hover:bg-surface-border transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto px-4 py-6 scroll-smooth" id="chat-container">
+<div class="max-w-3xl mx-auto flex flex-col gap-8 pb-4">
+<div class="flex justify-center">
+<span class="text-xs font-medium text-gray-500 bg-surface-dark/50 px-3 py-1 rounded-full">今天, 上午 10:23</span>
+</div>
+<div class="flex items-start gap-4 animate-[fadeIn_0.5s_ease-out]">
+<div class="size-10 rounded-full bg-surface-dark border border-surface-border flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%]">
+<div class="flex items-baseline justify-between gap-4">
+<span class="text-sm font-bold text-white">MAPLE</span>
+</div>
+<div class="bg-surface-dark text-gray-100 px-5 py-4 rounded-2xl rounded-tl-none border border-surface-border shadow-sm leading-relaxed">
+<p>Yao！我注意到你今天正在钻研微积分。在开始解题之前，试着问<strong>“为什么”</strong>来加深理解，或者尝试先用自己的话解释这个概念。</p>
+<p class="mt-2 text-gray-400 text-sm">这有助于巩固你的神经通路，实现长期记忆。</p>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4 flex-row-reverse animate-[fadeIn_0.5s_ease-out_0.1s_both]">
+<div class="size-10 rounded-full bg-gradient-to-br from-orange-400 to-yellow-600 shrink-0 shadow-lg" data-alt="User avatar"></div>
+<div class="flex flex-col gap-1.5 items-end max-w-[85%]">
+<span class="text-sm font-bold text-white">你</span>
+<div class="bg-primary text-background-dark px-5 py-4 rounded-2xl rounded-tr-none shadow-md font-medium leading-relaxed">
+<p>x² 的导数是什么？</p>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4 animate-[fadeIn_0.5s_ease-out_0.2s_both]">
+<div class="size-10 rounded-full bg-surface-dark border border-surface-border flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+</div>
+<div class="flex flex-col gap-1.5 max-w-[85%]">
+<div class="flex items-baseline justify-between gap-4">
+<span class="text-sm font-bold text-white">MAPLE</span>
+</div>
+<div class="bg-surface-dark text-gray-100 px-5 py-4 rounded-2xl rounded-tl-none border border-surface-border shadow-sm leading-relaxed space-y-4">
+<p><code class="bg-black/30 px-1.5 py-0.5 rounded text-primary font-mono text-sm">x²</code> 的导数是 <code class="bg-black/30 px-1.5 py-0.5 rounded text-primary font-mono text-sm">2x</code>。</p>
+<div class="bg-black/20 rounded-xl p-4 border border-white/5">
+<p class="text-sm font-bold text-gray-300 mb-2">幂法则：</p>
+<p class="text-sm text-gray-400 italic">对于任意函数 f(x) = xⁿ，其导数为 f'(x) = nxⁿ⁻¹。</p>
+</div>
+<p>为了真正掌握这一点，你能想出一个现实世界的场景，其中变化率随着输入的增加而增加，类似于 x² 吗？</p>
+</div>
+<div class="flex gap-2 mt-1">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors btn-like">
+                            <span class="material-symbols-outlined text-[16px]">thumb_up</span>
+                            <span>有帮助</span>
+                        </button>
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors btn-copy">
+                            <span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            <span>复制</span>
+                        </button>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4 flex-row-reverse animate-[fadeIn_0.5s_ease-out_0.3s_both]">
+<div class="size-10 rounded-full bg-gradient-to-br from-orange-400 to-yellow-600 shrink-0 shadow-lg" data-alt="User avatar"></div>
+<div class="flex flex-col gap-1.5 items-end max-w-[85%]">
+<span class="text-sm font-bold text-white">你</span>
+<div class="bg-primary text-background-dark px-5 py-4 rounded-2xl rounded-tr-none shadow-md font-medium leading-relaxed">
+<p>嗯，就像汽车加速那样？</p>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-4 animate-[fadeIn_0.5s_ease-out_0.4s_both]">
+<div class="size-10 rounded-full bg-surface-dark border border-surface-border flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+</div>
+<div class="bg-surface-dark px-4 py-4 rounded-2xl rounded-tl-none border border-surface-border shadow-sm flex items-center gap-1 h-[52px]">
+<div class="size-2 bg-gray-500 rounded-full typing-dot"></div>
+<div class="size-2 bg-gray-500 rounded-full typing-dot"></div>
+<div class="size-2 bg-gray-500 rounded-full typing-dot"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-none p-6 pt-0 relative">
+<div class="absolute -top-12 left-0 right-0 h-12 bg-gradient-to-t from-background-dark to-transparent pointer-events-none"></div>
+<div class="max-w-3xl mx-auto flex flex-col gap-4">
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide no-scrollbar mask-image-linear">
+<button class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-full bg-surface-dark border border-surface-border hover:border-primary/50 hover:bg-surface-border transition-all group">
+<span class="material-symbols-outlined text-primary text-lg">lightbulb</span>
+<span class="text-sm font-medium text-gray-200 group-hover:text-white">概念解释</span>
+</button>
+<button class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-full bg-surface-dark border border-surface-border hover:border-primary/50 hover:bg-surface-border transition-all group">
+<span class="material-symbols-outlined text-primary text-lg">public</span>
+<span class="text-sm font-medium text-gray-200 group-hover:text-white">举个现实例子</span>
+</button>
+<button class="flex shrink-0 items-center gap-2 px-4 py-2 rounded-full bg-surface-dark border border-surface-border hover:border-primary/50 hover:bg-surface-border transition-all group">
+<span class="material-symbols-outlined text-primary text-lg">quiz</span>
+<span class="text-sm font-medium text-gray-200 group-hover:text-white">考考我</span>
+</button>
+</div>
+<div class="relative group">
+<div class="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-orange-500/20 rounded-full opacity-50 blur transition duration-500 group-hover:opacity-100"></div>
+<div class="relative flex items-center gap-2 bg-[#292524] rounded-full p-2 pl-5 pr-2 border border-surface-border shadow-2xl transition-all focus-within:border-primary/50 focus-within:bg-[#44403c]">
+<button class="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+</button>
+<input class="flex-1 bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 text-base py-3 px-2 font-display" placeholder="向 MAPLE 提问..." type="text"/>
+<button class="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+<button class="bg-primary text-background-dark p-3 rounded-full hover:bg-white hover:text-background-dark transition-all duration-300 shadow-[0_0_10px_rgba(250,204,21,0.3)] hover:shadow-[0_0_15px_rgba(255,255,255,0.5)] flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px] font-bold">arrow_upward</span>
+</button>
+</div>
+</div>
+<p class="text-center text-[11px] text-gray-600 font-medium">MAPLE 可能会犯错。请核查重要信息。</p>
+</div>
+</div>
+</main>
+
+    <!-- Modals -->
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-surface-dark w-full max-w-md rounded-2xl border border-surface-border shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-surface-border flex items-center justify-between">
+                <h3 class="text-white text-lg font-bold">设置</h3>
+                <button class="text-gray-400 hover:text-white transition-colors" onclick="toggleModal('settings-modal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- Theme -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="size-8 rounded-full bg-surface-dark-hover flex items-center justify-center text-gray-300">
+                            <span class="material-symbols-outlined text-[20px]">dark_mode</span>
+                        </div>
+                        <div>
+                            <p class="text-white text-sm font-medium">深色模式</p>
+                            <p class="text-xs text-gray-500">调整界面外观</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-surface-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                <!-- Language -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="size-8 rounded-full bg-surface-dark-hover flex items-center justify-center text-gray-300">
+                            <span class="material-symbols-outlined text-[20px]">language</span>
+                        </div>
+                        <div>
+                            <p class="text-white text-sm font-medium">语言</p>
+                            <p class="text-xs text-gray-500">当前：简体中文</p>
+                        </div>
+                    </div>
+                    <button class="text-primary text-sm font-medium hover:underline">更改</button>
+                </div>
+                <!-- Notifications -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="size-8 rounded-full bg-surface-dark-hover flex items-center justify-center text-gray-300">
+                            <span class="material-symbols-outlined text-[20px]">notifications</span>
+                        </div>
+                        <div>
+                            <p class="text-white text-sm font-medium">通知</p>
+                            <p class="text-xs text-gray-500">接收消息提醒</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-surface-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+            </div>
+            <div class="p-6 border-t border-surface-border flex justify-end">
+                <button class="bg-primary text-background-dark px-4 py-2 rounded-full text-sm font-bold hover:bg-white transition-colors" onclick="toggleModal('settings-modal')">保存更改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-surface-dark w-full max-w-sm rounded-2xl border border-surface-border shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="p-6 flex flex-col items-center gap-4">
+                <div class="size-20 rounded-full bg-gradient-to-br from-orange-400 to-yellow-600 shadow-xl border-4 border-surface-border"></div>
+                <div class="text-center">
+                    <h3 class="text-white text-xl font-bolYao 同学</h3>
+                    <p class="text-gray-400 text-sYao@example.com</p>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+                    <span class="material-symbols-outlined text-primary text-[16px]">verified</span>
+                    <span class="text-primary text-xs font-bold uppercase tracking-wide">免费计划</span>
+                </div>
+            </div>
+            <div class="p-4 border-t border-surface-border grid grid-cols-2 gap-4">
+                <div class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-surface-dark-hover transition-colors cursor-pointer group">
+                    <span class="text-white font-bold text-lg">12</span>
+                    <span class="text-xs text-gray-500 group-hover:text-gray-300">总会话</span>
+                </div>
+                <div class="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-surface-dark-hover transition-colors cursor-pointer group">
+                    <span class="text-white font-bold text-lg">5.2h</span>
+                    <span class="text-xs text-gray-500 group-hover:text-gray-300">学习时长</span>
+                </div>
+            </div>
+            <div class="p-4 flex flex-col gap-2">
+                <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-surface-dark-hover hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">account_circle</span>
+                    <span class="text-sm font-medium">账户设置</span>
+                </button>
+                <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-surface-dark-hover hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">upgrade</span>
+                    <span class="text-sm font-medium">升级计划</span>
+                </button>
+                <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-400/10 transition-colors">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span class="text-sm font-medium">退出登录</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div id="status-modal" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-surface-dark w-full max-w-sm rounded-2xl border border-surface-border shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-surface-border flex items-center justify-between">
+                <h3 class="text-white text-lg font-bold">系统状态</h3>
+                <button class="text-gray-400 hover:text-white transition-colors" onclick="toggleModal('status-modal')">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-400 text-sm">服务状态</span>
+                    <span class="text-green-400 text-sm font-bold flex items-center gap-1">
+                        <span class="size-2 rounded-full bg-green-400 animate-pulse"></span>
+                        正常运行
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-400 text-sm">API 延迟</span>
+                    <span class="text-white text-sm font-mono">45ms</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-400 text-sm">当前模型</span>
+                    <span class="text-primary text-sm font-bold">MAPLE-v2.1</span>
+                </div>
+                <div class="h-1 w-full bg-surface-border rounded-full overflow-hidden mt-2">
+                    <div class="h-full bg-primary w-[98%]"></div>
+                </div>
+                <p class="text-center text-xs text-gray-500 mt-2">系统运行平稳，无已知故障。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        // Select input specifically within chat-view
+        const chatInput = document.querySelector('#chat-view input[type="text"]');
+        // Select send button specifically within chat-view
+        const sendButton = document.querySelector('#chat-view button .material-symbols-outlined.font-bold').parentElement;
+        const messagesContainer = document.querySelector('.max-w-3xl.mx-auto.flex.flex-col.gap-8');
+        const typingIndicator = document.querySelector('.flex.items-start.gap-4.animate-\\[fadeIn_0\\.5s_ease-out_0\\.4s_both\\]');
+        
+        // Expert Agent Definitions
+        const agents = {
+            general: {
+                id: 'general',
+                name: 'MAPLE',
+                role: 'AI Literacy Assistant',
+                avatar_icon: 'smart_toy',
+                color: 'text-primary', // text-yellow-400
+                bg_gradient: 'from-orange-400 to-yellow-600', // User avatar style, but for agent
+                border_color: 'border-primary',
+                system_prompt: "You are MAPLE, a helpful AI literacy assistant. Answer the user's questions generally."
+            },
+            tech: {
+                id: 'tech',
+                name: 'The Technologist',
+                role: 'Chief Technology Officer',
+                avatar_icon: 'terminal',
+                color: 'text-blue-400',
+                bg_gradient: 'from-blue-500 to-cyan-400',
+                border_color: 'border-blue-400',
+                system_prompt: "You are The Technologist (Expert A). Style: Geeky, code-oriented, efficient. Function: Provide Python code, explain RAG, optimize Prompts. Use technical terminology."
+            },
+            pedagogy: {
+                id: 'pedagogy',
+                name: 'The Pedagogue',
+                role: 'Senior Researcher',
+                avatar_icon: 'school',
+                color: 'text-green-400',
+                bg_gradient: 'from-green-500 to-emerald-400',
+                border_color: 'border-green-400',
+                system_prompt: "You are The Pedagogue (Expert B). Style: Socratic, theoretical, student-focused. Function: Ask about learning goals, analyze student needs, suggest teaching strategies (like PBL)."
+            },
+            ethics: {
+                id: 'ethics',
+                name: 'The Ethicist',
+                role: 'Ethics Reviewer',
+                avatar_icon: 'gavel',
+                color: 'text-red-400',
+                bg_gradient: 'from-red-500 to-rose-400',
+                border_color: 'border-red-400',
+                system_prompt: "You are The Ethicist (Expert C). Style: Strict, sensitive, legal-conscious. Function: Warn about data privacy, bias, and copyright risks. Prevent violations."
+            }
+        };
+
+        let currentAgent = agents.general;
+
+        // Dispatcher Logic with Scoring
+        function detectIntent(text) {
+            const lowerText = text.toLowerCase();
+            
+            // Scoring System
+            let scores = {
+                tech: 0,
+                pedagogy: 0,
+                ethics: 0,
+                general: 0.1 // Base score
+            };
+
+            // Tech Keywords
+            const techKeywords = /(code|python|bug|error|rag|prompt|api|function|debug|algorithm|json|代码|编程|报错|调试|接口|算法)/i;
+            if (techKeywords.test(lowerText)) scores.tech += 1;
+
+            // Pedagogy Keywords (Higher weight for explicit teaching context)
+            const pedagogyKeywords = /(student|teach|learn|goal|pbl|scaffolding|curriculum|assessment|bloom|classroom|学生|教学|学习|目标|课程|评估|布鲁姆|课堂|教案)/i;
+            if (pedagogyKeywords.test(lowerText)) scores.pedagogy += 1;
+            // Boost if "teach" or "student" appears explicitly
+            if (/(teach|classroom|学生|教学|课堂)/i.test(lowerText)) scores.pedagogy += 0.5;
+
+            // Ethics Keywords
+            const ethicsKeywords = /(privacy|bias|legal|copyright|data|risk|safety|harm|policy|regulation|隐私|偏见|法律|版权|数据|风险|安全|合规)/i;
+            if (ethicsKeywords.test(lowerText)) scores.ethics += 1;
+
+            // Decision Logic
+            // If "teach" + "RAG" -> Pedagogy should win (teaching a tech topic)
+            // Current scoring: Tech=1 ("RAG"), Pedagogy=1.5 ("教", "目标"). Pedagogy wins.
+            
+            let maxScore = 0;
+            let bestAgent = 'general';
+
+            for (const [agent, score] of Object.entries(scores)) {
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestAgent = agent;
+                }
+            }
+            
+            // If scores are tied (e.g. RAG + Bias), maybe prioritize Ethics > Pedagogy > Tech?
+            // Simple tie-breaking by order of iteration or explicit check.
+            // Let's implement explicit tie-breaking if maxScore > 0.1
+            if (maxScore > 0.1) {
+                // Check ties or close calls
+                if (scores.ethics >= scores.tech && scores.ethics >= scores.pedagogy && scores.ethics > 0) return 'ethics';
+                if (scores.pedagogy >= scores.tech && scores.pedagogy > 0) return 'pedagogy';
+                if (scores.tech > 0) return 'tech';
+            }
+
+            return bestAgent;
+        }
+
+        function switchAgent(agentId) {
+            if (currentAgent.id === agentId) return;
+            
+            const newAgent = agents[agentId];
+            currentAgent = newAgent;
+            
+            // UI Feedback for Switching
+            showSwitchNotification(newAgent);
+            updateHeaderUI(newAgent);
+        }
+
+        function showSwitchNotification(agent) {
+            const notif = document.createElement('div');
+            notif.className = "flex justify-center animate-[fadeIn_0.5s_ease-out]";
+            notif.innerHTML = `
+                <div class="flex items-center gap-2 bg-surface-dark border ${agent.border_color} px-4 py-2 rounded-full shadow-lg">
+                    <span class="material-symbols-outlined ${agent.color} text-sm">swap_horiz</span>
+                    <span class="text-xs text-gray-300">Switching to <span class="${agent.color} font-bold">${agent.name}</span></span>
+                </div>
+            `;
+            messagesContainer.appendChild(notif);
+            scrollToBottom();
+        }
+
+        function updateHeaderUI(agent) {
+            // Update Header Icon and Title
+            // Note: This assumes specific header structure. Let's make it robust.
+            const headerTitle = document.querySelector('header h2');
+            const headerTag = document.querySelector('header span.uppercase');
+            
+            if(headerTitle) {
+                // Keep the topic, maybe append Agent? Or just change color?
+                // Let's change the "Learning Mode" indicator if it exists
+                const modeBtn = document.querySelector('header button span.material-symbols-outlined').parentNode;
+                if(modeBtn) {
+                    // Update icon and text
+                    const icon = modeBtn.querySelector('.material-symbols-outlined');
+                    const text = modeBtn.childNodes[2]; // Assuming text node is 3rd (icon, space, text)
+                    
+                    if(icon) icon.textContent = agent.avatar_icon;
+                    // Reset classes
+                    modeBtn.className = `bg-surface-dark text-white rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1 shadow-sm border ${agent.border_color}`;
+                    // Special styling for active agent
+                     if(agent.id !== 'general') {
+                         modeBtn.classList.remove('bg-surface-dark');
+                         // We can't easily add arbitrary tailwind classes if they aren't compiled, 
+                         // but we can use style attribute or known classes.
+                         // Let's use simple border and text color.
+                         icon.className = `material-symbols-outlined text-[16px] ${agent.color}`;
+                     }
+                }
+            }
+        }
+
+        // Helper to find button by icon text
+        function findButtonByIcon(iconName) {
+            return Array.from(document.querySelectorAll('button .material-symbols-outlined'))
+                .find(el => el.textContent.trim() === iconName)
+                ?.closest('button');
+        }
+
+        // Buttons
+        const quickActionBtns = document.querySelectorAll('.flex.gap-2.overflow-x-auto button');
+        const newSessionBtn = findButtonByIcon("add");
+        const attachBtn = findButtonByIcon("add_circle");
+        const micBtn = findButtonByIcon("mic");
+
+        // Initial session setup
+        let sessionId = "session_" + Date.now();
+        let messageHistory = [];
+
+        console.log("Current Session ID:", sessionId);
+
+        // Hide typing indicator initially
+        if (typingIndicator) {
+            typingIndicator.style.display = 'none';
+        }
+
+        async function sendMessage(text = null) {
+            const content = text || chatInput.value.trim();
+            if (!content) return;
+
+            // 1. Add User Message to UI
+            appendUserMessage(content);
+            chatInput.value = '';
+            
+            // 2. Add to history
+            // Map 'ai' role to 'assistant' for backend compatibility
+            const apiMessageHistory = messageHistory.map(msg => ({
+                role: (msg.role === 'ai' || msg.role === 'assistant') ? 'assistant' : msg.role,
+                content: msg.content
+            }));
+            
+            // Dispatcher: Determine Agent
+            const agentId = detectIntent(content);
+            if (agentId !== currentAgent.id) {
+                switchAgent(agentId);
+            }
+            
+            // Add current user message
+            apiMessageHistory.push({ role: "user", content: content });
+            
+            // Prepend System Prompt for Current Agent
+            apiMessageHistory.unshift({
+                role: "system",
+                content: currentAgent.system_prompt
+            });
+
+            // 3. Show Typing Indicator
+            if (typingIndicator) {
+                typingIndicator.style.display = 'flex';
+                messagesContainer.appendChild(typingIndicator); // Move to bottom
+                scrollToBottom();
+            }
+
+            try {
+                // 4. Send to Backend
+                const response = await fetch('http://localhost:8000/api/chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        messages: apiMessageHistory
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                
+                // 5. Hide Typing Indicator
+                if (typingIndicator) {
+                    typingIndicator.style.display = 'none';
+                }
+
+                // 6. Add AI Response to UI
+                appendAIMessage(data.response);
+                
+                // 7. Add to history (keep internal format)
+                messageHistory.push({ role: "user", content: content }); // Add user msg to local history after success
+                messageHistory.push({ role: "assistant", content: data.response });
+                
+                // 8. Save Session
+                saveCurrentSession();
+
+            } catch (error) {
+                console.error('Error:', error);
+                if (typingIndicator) typingIndicator.style.display = 'none';
+                appendAIMessage("抱歉，我遇到了一些问题，请稍后再试。");
+            }
+        }
+
+        function appendUserMessage(text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "flex items-start gap-4 flex-row-reverse animate-[fadeIn_0.5s_ease-out_both]";
+            msgDiv.innerHTML = `
+                <div class="size-10 rounded-full bg-gradient-to-br from-orange-400 to-yellow-600 shrink-0 shadow-lg" data-alt="User avatar"></div>
+                <div class="flex flex-col gap-1.5 items-end max-w-[85%]">
+                    <span class="text-sm font-bold text-white">你</span>
+                    <div class="bg-primary text-background-dark px-5 py-4 rounded-2xl rounded-tr-none shadow-md font-medium leading-relaxed">
+                        <p>${escapeHtml(text)}</p>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function appendAIMessage(text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = "flex items-start gap-4 animate-[fadeIn_0.5s_ease-out_both]";
+            msgDiv.innerHTML = `
+                <div class="size-10 rounded-full bg-surface-dark border ${currentAgent.border_color} flex items-center justify-center shrink-0 shadow-lg group relative">
+                    <span class="material-symbols-outlined ${currentAgent.color} text-xl">${currentAgent.avatar_icon}</span>
+                    <div class="absolute -bottom-1 -right-1 size-3 bg-surface-dark rounded-full border border-surface-border flex items-center justify-center">
+                        <span class="size-1.5 rounded-full ${currentAgent.color.replace('text-', 'bg-')}"></span>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1.5 max-w-[85%]">
+                    <div class="flex items-baseline justify-between gap-4">
+                        <span class="text-sm font-bold text-white flex items-center gap-2">
+                            ${currentAgent.name}
+                            <span class="text-[10px] font-normal px-1.5 py-0.5 rounded-full border ${currentAgent.border_color} ${currentAgent.color} bg-surface-dark/50 uppercase tracking-wider">${currentAgent.role}</span>
+                        </span>
+                    </div>
+                    <div class="bg-surface-dark text-gray-100 px-5 py-4 rounded-2xl rounded-tl-none border border-surface-border shadow-sm leading-relaxed message-content">
+                        ${parseMarkdown(text)}
+                    </div>
+                    <div class="flex gap-2 mt-1">
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors btn-like">
+                            <span class="material-symbols-outlined text-[16px]">thumb_up</span>
+                            <span>有帮助</span>
+                        </button>
+                        <button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors btn-copy">
+                            <span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            <span>复制</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Advanced Parser with Markdown and KaTeX Support
+        function parseMarkdown(text) {
+            // 1. Pre-process Math to protect it from Markdown parser
+            const mathSegments = [];
+            
+            // Function to replace math with placeholder and store for later
+            const storeMath = (math, displayMode) => {
+                const id = `@@MATH_${mathSegments.length}@@`;
+                try {
+                    const html = katex.renderToString(math, {
+                        displayMode: displayMode,
+                        throwOnError: false
+                    });
+                    mathSegments.push({ id, html });
+                    return id;
+                } catch (e) {
+                    console.error("KaTeX error:", e);
+                    return math; // Fallback to raw text
+                }
+            };
+
+            // Replace Display Math \[ ... \]
+            let processedText = text.replace(/\\\[([\s\S]*?)\\\]/g, (match, math) => storeMath(math, true));
+            
+            // Replace Display Math $$ ... $$
+            processedText = processedText.replace(/\$\$([\s\S]*?)\$\$/g, (match, math) => storeMath(math, true));
+
+            // Replace Inline Math \( ... \)
+            processedText = processedText.replace(/\\\(([\s\S]*?)\\\)/g, (match, math) => storeMath(math, false));
+            
+            // Replace Inline Math $ ... $ (Simple regex, might catch currency but acceptable for now)
+            // processedText = processedText.replace(/\$([^\$\n]+?)\$/g, (match, math) => storeMath(math, false));
+
+            // 2. Parse Markdown
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+            let html = marked.parse(processedText);
+
+            // 3. Restore Math
+            mathSegments.forEach(segment => {
+                html = html.replace(segment.id, segment.html);
+            });
+
+            return html;
+        }
+
+
+
+        // Removed old saveCurrentSessionToSidebar function as it's replaced by renderSidebar logic
+        // But need to keep the function definition or remove it. Let's remove it in the replacement.
+
+        // Event Delegation for Messages (Handles both static and dynamic buttons)
+        messagesContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+
+            // Handle Like
+            if (btn.querySelector('.material-symbols-outlined').textContent.trim() === 'thumb_up' || btn.classList.contains('btn-like')) {
+                handleFeedback(btn);
+            }
+
+            // Handle Copy
+            if (btn.querySelector('.material-symbols-outlined').textContent.trim() === 'content_copy' || btn.classList.contains('btn-copy')) {
+                // Find the message content
+                // Structure: button -> div (actions) -> div (wrapper) -> div (message-content)
+                // Or: button container is next sibling of message content
+                const actionContainer = btn.parentElement;
+                const messageWrapper = actionContainer.parentElement;
+                // Try to find the content div. 
+                // For dynamic messages I added 'message-content' class.
+                // For static messages, we might need to rely on structure.
+                let contentDiv = messageWrapper.querySelector('.bg-surface-dark.text-gray-100');
+                
+                if (contentDiv) {
+                    const text = contentDiv.innerText;
+                    copyToClipboard(btn, text);
+                }
+            }
+        });
+
+        function handleFeedback(btn) {
+            const icon = btn.querySelector('.material-symbols-outlined');
+            btn.classList.toggle('text-primary');
+            icon.classList.toggle('fill-current'); 
+            
+            const textSpan = btn.querySelector('span:last-child');
+            if (textSpan) {
+                textSpan.textContent = btn.classList.contains('text-primary') ? '已点赞' : '有帮助';
+            }
+        }
+
+        function copyToClipboard(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> <span>已复制</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+
+        // Event Listeners
+        sendButton.addEventListener('click', () => sendMessage());
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Quick Actions
+        quickActionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.querySelector('span:last-child').textContent;
+                sendMessage(text);
+            });
+        });
+
+        // New Session
+        // Note: The selector might be tricky because there are multiple buttons.
+        // Let's find the one with "新会话" text or "add" icon in aside
+        const sidebarButtons = document.querySelectorAll('aside button');
+        sidebarButtons.forEach(btn => {
+            if(btn.textContent.includes('新会话')) {
+                btn.addEventListener('click', handleNewSession);
+            }
+        });
+
+        // Attach & Mic (Mock)
+        if(attachBtn) {
+            attachBtn.addEventListener('click', () => alert('附件上传功能即将上线！'));
+        }
+        if(micBtn) {
+            micBtn.addEventListener('click', () => alert('语音输入功能即将上线！'));
+        }
+
+        // --- Sidebar Functionality ---
+
+        // Mock Data for History
+        const mockSessions = {
+            "微积分极限": {
+                title: "微积分：理解导数",
+                tag: "数学-101",
+                messages: [
+                    { role: "assistant", content: "Yao！我注意到你今天正在钻研微积分。在开始解题之前，试着问**“为什么”**来加深理解，或者尝试先用自己的话解释这个概念。\n\n这有助于巩固你的神经通路，实现长期记忆。" },
+                    { role: "user", content: "x² 的导数是什么？" },
+                    { role: "assistant", content: "`x²` 的导数是 `2x`。\n\n**幂法则：**\n对于任意函数 f(x) = xⁿ，其导数为 f'(x) = nxⁿ⁻¹。\n\n为了真正掌握这一点，你能想出一个现实世界的场景，其中变化率随着输入的增加而增加，类似于 x² 吗？" },
+                    { role: "user", content: "嗯，就像汽车加速那样？" }
+                ]
+            },
+            "论文构思": {
+                title: "论文写作：构思与大纲",
+                tag: "写作-202",
+                messages: [
+                    { role: "assistant", content: "准备好开始你的论文了吗？我们可以从头脑风暴开始。你有没有想好一个初步的主题？" },
+                    { role: "user", content: "我想写一篇关于人工智能对教育影响的文章。" },
+                    { role: "assistant", content: "这是一个非常有意义的话题。你可以从**个性化学习**、**教师角色的转变**以及**公平性**三个角度切入。\n\n你想先深入探讨哪一个点？" }
+                ]
+            },
+            "罗马历史": {
+                title: "历史：罗马帝国的衰落",
+                tag: "历史-305",
+                messages: [
+                    { role: "assistant", content: "欢迎回来。上次我们要讨论罗马帝国衰落的经济原因。" },
+                    { role: "user", content: "通货膨胀是主要原因吗？" },
+                    { role: "assistant", content: "是的，**通货膨胀**是一个关键因素，但还有**过度扩张**和**政治腐败**。\n\n当时的货币贬值对普通民众的生活造成了什么影响？" }
+                ]
+            }
+        };
+
+        // --- Local Storage & Persistence Logic ---
+
+        function getStoredSessions() {
+            try {
+                return JSON.parse(localStorage.getItem('maple_sessions')) || {};
+            } catch (e) {
+                console.error("Error reading from localStorage:", e);
+                return {};
+            }
+        }
+
+        function saveSessionsToStorage(sessions) {
+            localStorage.setItem('maple_sessions', JSON.stringify(sessions));
+        }
+
+        function saveCurrentSession() {
+            if (messageHistory.length === 0) return; // Don't save empty sessions
+
+            const sessions = getStoredSessions();
+            
+            // Determine Title
+            let title = "新对话";
+            const firstUserMsg = messageHistory.find(m => m.role === 'user');
+            if (firstUserMsg) {
+                title = firstUserMsg.content.substring(0, 20);
+            } else if (sessions[sessionId]?.title) {
+                title = sessions[sessionId].title; // Keep existing title if available
+            }
+
+            sessions[sessionId] = {
+                id: sessionId,
+                title: title,
+                tag: "历史记录", // You might want to make this dynamic later
+                messages: messageHistory,
+                timestamp: Date.now()
+            };
+            
+            saveSessionsToStorage(sessions);
+            renderSidebar(); // Update sidebar immediately
+        }
+        
+        // --- Sidebar Logic ---
+        
+        function renderSidebar() {
+            const nav = document.querySelector('aside nav');
+            // Clear existing links except the label
+            const links = nav.querySelectorAll('a');
+            links.forEach(l => l.remove());
+            
+            const sessions = getStoredSessions();
+            // Sort by timestamp desc
+            const sortedSessions = Object.values(sessions).sort((a, b) => b.timestamp - a.timestamp);
+            
+            const todayLabel = nav.querySelector('div'); // "今天" label
+
+            sortedSessions.forEach(session => {
+                const link = document.createElement('a');
+                // Active state check
+                const isActive = session.id === sessionId;
+                const baseClass = isActive 
+                    ? "flex items-center gap-3 px-4 py-3 rounded-full bg-surface-dark border border-surface-border text-white transition-colors"
+                    : "flex items-center gap-3 px-4 py-3 rounded-full text-gray-400 hover:bg-surface-dark/50 hover:text-white transition-colors";
+                
+                link.className = baseClass;
+                link.href = "#";
+                link.dataset.sessionId = session.id;
+                
+                const iconClass = isActive ? "text-primary" : "";
+                
+                link.innerHTML = `
+                    <span class="material-symbols-outlined text-[20px] ${iconClass}">chat_bubble_outline</span>
+                    <span class="text-sm font-medium truncate">${escapeHtml(session.title)}</span>
+                `;
+                
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchToSession(session.id);
+                });
+                
+                nav.appendChild(link);
+            });
+        }
+
+        function switchToSession(id) {
+            const sessions = getStoredSessions();
+            const sessionData = sessions[id];
+            
+            if (sessionData) {
+                sessionId = id;
+                // Update Global History
+                messageHistory = [...sessionData.messages];
+                
+                // Update UI
+                renderSidebar(); // To update active state
+                loadSession(sessionData);
+                
+                // Close sidebar on mobile
+                if(window.innerWidth < 768 && sidebar.classList.contains('fixed')) {
+                     sidebar.classList.add('hidden');
+                     sidebar.classList.remove('fixed', 'inset-0', 'z-50', 'w-64');
+                }
+            }
+        }
+
+        // Initialize Persistence on Load
+        (function initPersistence() {
+            let sessions = getStoredSessions();
+            const hasStoredSessions = Object.keys(sessions).length > 0;
+            
+            // If no stored sessions, import mock sessions
+            if (!hasStoredSessions) {
+                console.log("Initializing with mock sessions...");
+                // Convert mockSessions object to our storage format
+                Object.keys(mockSessions).forEach((key, index) => {
+                    const mock = mockSessions[key];
+                    // Generate a stable ID for mock sessions or use random
+                    const mockId = "mock_session_" + index;
+                    sessions[mockId] = {
+                        id: mockId,
+                        title: mock.title,
+                        tag: mock.tag,
+                        messages: mock.messages,
+                        timestamp: Date.now() - (index * 1000) // Stagger timestamps
+                    };
+                });
+                saveSessionsToStorage(sessions);
+            }
+            
+            // Render Sidebar
+            renderSidebar();
+        })();
+
+        // --- End Persistence Logic ---
+
+        // --- View Switching Logic ---
+        
+        const portalView = document.getElementById('portal-view');
+        const chatView = document.getElementById('chat-view');
+        const portalInput = document.getElementById('portal-input');
+        
+        function showPortal() {
+            portalView.classList.remove('hidden');
+            portalView.classList.add('flex');
+            chatView.classList.add('hidden');
+            chatView.classList.remove('flex');
+            
+            // Clear inputs
+            portalInput.value = '';
+            chatInput.value = '';
+        }
+
+        function showChat() {
+            portalView.classList.add('hidden');
+            portalView.classList.remove('flex');
+            chatView.classList.remove('hidden');
+            chatView.classList.add('flex');
+            
+            // Focus chat input if needed, or just scroll
+            scrollToBottom();
+        }
+
+        function sendPortalMessage(text = null) {
+            const content = text || portalInput.value.trim();
+            if (!content) return;
+
+            // 1. Switch to Chat View
+            showChat();
+            
+            // 2. Start New Session (if not already clean)
+            // handleNewSession() clears messages, but we want to start with this message.
+            // If we are coming from Portal, it's essentially a new session.
+            
+            // Reset Session
+            sessionId = "session_" + Date.now();
+            messageHistory = [];
+            console.log("New Session from Portal:", sessionId);
+            
+            // Clear Chat UI (remove greeting if any, or keep it?) 
+            // handleNewSession adds greeting. We might want to skip greeting if user asked question.
+            messagesContainer.innerHTML = '';
+            
+            // Add Timestamp
+            const timeDiv = document.createElement('div');
+            timeDiv.className = "flex justify-center";
+            timeDiv.innerHTML = '<span class="text-xs font-medium text-gray-500 bg-surface-dark/50 px-3 py-1 rounded-full">今天, ' + new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}) + '</span>';
+            messagesContainer.appendChild(timeDiv);
+
+            // 3. Send Message
+            sendMessage(content);
+            
+            // 4. Update Sidebar (active state)
+            renderSidebar();
+        }
+
+        // Portal Input Event
+        portalInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendPortalMessage();
+            }
+        });
+
+        // --- End View Switching Logic ---
+
+        // Modified handleNewSession to show Portal
+        function handleNewSession() {
+             // Save current session logic...
+             if (messageHistory.length > 0) {
+                 saveCurrentSession();
+             }
+             
+             // Reset session ID? Or wait until portal input?
+             // Gemin/ChatGPT behavior: New Chat button just shows blank welcome screen. 
+             // Session is created when first message is sent.
+             // But we need to update sidebar active state to "None" or "New"?
+             sessionId = null; // No active session yet
+             
+             renderSidebar(); // Will show no active link
+             showPortal();
+        }
+
+        // Update switchToSession to show Chat
+        function switchToSession(id) {
+            const sessions = getStoredSessions();
+            const sessionData = sessions[id];
+            
+            if (sessionData) {
+                sessionId = id;
+                messageHistory = [...sessionData.messages];
+                
+                showChat(); // Switch to chat view
+                renderSidebar();
+                loadSession(sessionData);
+                
+                // Close sidebar on mobile...
+                if(window.innerWidth < 768 && sidebar.classList.contains('fixed')) {
+                     sidebar.classList.add('hidden');
+                     sidebar.classList.remove('fixed', 'inset-0', 'z-50', 'w-64');
+                }
+            }
+        }
+        
+        // Update Init Logic
+        (function initPersistence() {
+             let sessions = getStoredSessions();
+             const hasStoredSessions = Object.keys(sessions).length > 0;
+             
+             if (!hasStoredSessions) {
+                 // ... import mock sessions ...
+                 console.log("Initializing with mock sessions...");
+                // Convert mockSessions object to our storage format
+                Object.keys(mockSessions).forEach((key, index) => {
+                    const mock = mockSessions[key];
+                    const mockId = "mock_session_" + index;
+                    sessions[mockId] = {
+                        id: mockId,
+                        title: mock.title,
+                        tag: mock.tag,
+                        messages: mock.messages,
+                        timestamp: Date.now() - (index * 1000)
+                    };
+                });
+                saveSessionsToStorage(sessions);
+             }
+             
+             // Default View: Portal
+             // Unless we want to restore last session? User said "Enter system show portal".
+             showPortal();
+             renderSidebar();
+        })();
+
+        // --- Selectors ---
+        const navLinks = document.querySelectorAll('aside nav a'); // Legacy selectors, might need cleanup
+
+        const headerTitle = document.querySelector('header h2');
+        const headerTag = document.querySelector('header span.uppercase'); // Tag
+        const mobileMenuBtn = document.querySelector('.md\\:hidden button');
+        const sidebar = document.querySelector('aside');
+        const sidebarBottomSection = document.querySelector('aside > div:last-child');
+        const settingsButton = sidebarBottomSection ? sidebarBottomSection.querySelector('button') : null;
+        const profileDiv = sidebarBottomSection ? sidebarBottomSection.querySelector('div.cursor-pointer, div.flex.items-center.gap-3') : null;
+        const statusDiv = document.querySelector('aside .group.cursor-help');
+
+        // Modal Logic
+        window.toggleModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            
+            if (modal.classList.contains('hidden')) {
+                // Show
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                // Trigger reflow for transition
+                void modal.offsetWidth;
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+                modal.querySelector('div').classList.add('scale-100');
+            } else {
+                // Hide
+                modal.classList.add('opacity-0');
+                modal.querySelector('div').classList.remove('scale-100');
+                modal.querySelector('div').classList.add('scale-95');
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 300);
+            }
+        };
+
+        // Close modal on outside click
+        document.querySelectorAll('.fixed.inset-0.bg-black\\/80').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    toggleModal(overlay.id);
+                }
+            });
+        });
+
+        // Mobile Menu Toggle
+        if (mobileMenuBtn && sidebar) {
+            mobileMenuBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+                // Basic mobile styles
+                if (!sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('fixed', 'inset-0', 'z-50', 'w-64'); // Use w-64 or w-72
+                } else {
+                    sidebar.classList.remove('fixed', 'inset-0', 'z-50', 'w-64');
+                }
+            });
+        }
+
+        // History Navigation
+        // Removed old manual listener attachment as it's now handled in renderSidebar
+        // navLinks.forEach(link => { ... });
+
+        // Selectors Update (if needed, but we rely on dynamic creation now)
+
+        function loadSession(data) {
+            // Update Header
+            if(headerTitle) headerTitle.textContent = data.title;
+            if(headerTag) headerTag.textContent = data.tag;
+
+            // Clear Messages
+            messagesContainer.innerHTML = '';
+            
+            // Add Timestamp
+            const timeDiv = document.createElement('div');
+            timeDiv.className = "flex justify-center";
+            timeDiv.innerHTML = '<span class="text-xs font-medium text-gray-500 bg-surface-dark/50 px-3 py-1 rounded-full">今天, 上午 10:23</span>';
+            messagesContainer.appendChild(timeDiv);
+
+            // Add Messages
+            data.messages.forEach(msg => {
+                if(msg.role === 'ai' || msg.role === 'assistant') {
+                    appendAIMessage(msg.content);
+                } else {
+                    appendUserMessage(msg.content);
+                }
+            });
+            
+            // Sync history
+            messageHistory = [...data.messages]; // Clone
+        }
+
+        // Settings & Profile & Status
+        if(settingsButton) {
+            settingsButton.addEventListener('click', () => {
+                toggleModal('settings-modal');
+            });
+        }
+        
+        if(profileDiv) {
+            profileDiv.addEventListener('click', () => {
+                toggleModal('profile-modal');
+            });
+        }
+
+        if(statusDiv) {
+            statusDiv.addEventListener('click', () => {
+                toggleModal('status-modal');
+            });
+        }
+
+
+
+    </script>
+</body></html>
