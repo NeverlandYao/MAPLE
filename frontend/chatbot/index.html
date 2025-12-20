@@ -487,7 +487,7 @@
                 color: 'text-primary', // text-yellow-400
                 bg_gradient: 'from-orange-400 to-yellow-600', // User avatar style, but for agent
                 border_color: 'border-primary',
-                system_prompt: "You are MAPLE, a helpful AI literacy assistant. Answer the user's questions generally."
+                system_prompt: "你现在是MAPLE，一个乐于助人的AI素养助手。请用中文回答用户的通用问题，保持友好和鼓励的态度。"
             },
             tech: {
                 id: 'tech',
@@ -497,7 +497,7 @@
                 color: 'text-blue-400',
                 bg_gradient: 'from-blue-500 to-cyan-400',
                 border_color: 'border-blue-400',
-                system_prompt: "You are The Technologist (Expert A). Style: Geeky, code-oriented, efficient. Function: Provide Python code, explain RAG, optimize Prompts. Use technical terminology."
+                system_prompt: "你现在是技术专家(The Technologist)。风格：极客、代码导向、注重效率、专业。功能：提供高质量的Python代码，深入解释RAG、Transformer等技术原理，优化Prompt工程。请使用专业的技术术语，并给出具体的代码示例或技术架构分析。"
             },
             pedagogy: {
                 id: 'pedagogy',
@@ -507,7 +507,7 @@
                 color: 'text-green-400',
                 bg_gradient: 'from-green-500 to-emerald-400',
                 border_color: 'border-green-400',
-                system_prompt: "You are The Pedagogue (Expert B). Style: Socratic, theoretical, student-focused. Function: Ask about learning goals, analyze student needs, suggest teaching strategies (like PBL)."
+                system_prompt: "你现在是资深教研员(The Pedagogue)。风格：循循善诱、理论扎实、关注学生主体。功能：追问教学目标，提醒学情分析，建议PBL、脚手架等教学策略。不要直接给出答案，而是引导用户思考如何将AI更好地融入教学设计中。"
             },
             ethics: {
                 id: 'ethics',
@@ -517,7 +517,7 @@
                 color: 'text-red-400',
                 bg_gradient: 'from-red-500 to-rose-400',
                 border_color: 'border-red-400',
-                system_prompt: "You are The Ethicist (Expert C). Style: Strict, sensitive, legal-conscious. Function: Warn about data privacy, bias, and copyright risks. Prevent violations."
+                system_prompt: "你现在是伦理审查员(The Ethicist)。你的首要任务是保障AI交互的安全性和合规性。当检测到潜在风险时，请首先以 **【伦理风险警告】** 开头，明确指出问题所在（如数据隐私、算法偏见、版权侵权等），然后提供合规的建议或替代方案。风格：严谨、客观、具有法律意识。"
             }
         };
 
@@ -546,7 +546,7 @@
             if (/(teach|classroom|学生|教学|课堂)/i.test(lowerText)) scores.pedagogy += 0.5;
 
             // Ethics Keywords
-            const ethicsKeywords = /(privacy|bias|legal|copyright|data|risk|safety|harm|policy|regulation|隐私|偏见|法律|版权|数据|风险|安全|合规)/i;
+            const ethicsKeywords = /(privacy|bias|legal|copyright|data|risk|safety|harm|policy|regulation|jailbreak|attack|hack|discrimination|隐私|偏见|法律|版权|数据|风险|安全|合规|越狱|攻击|黑客|歧视|暴力|色情|违规)/i;
             if (ethicsKeywords.test(lowerText)) scores.ethics += 1;
 
             // Decision Logic
@@ -719,8 +719,12 @@
                 appendAIMessage(data.response);
                 
                 // 7. Add to history (keep internal format)
-                messageHistory.push({ role: "user", content: content }); // Add user msg to local history after success
-                messageHistory.push({ role: "assistant", content: data.response });
+            messageHistory.push({ role: "user", content: content }); // Add user msg to local history after success
+            messageHistory.push({ 
+                role: "assistant", 
+                content: data.response,
+                agentId: currentAgent.id // Save the agent ID
+            });
                 
                 // 8. Save Session
                 saveCurrentSession();
@@ -748,21 +752,22 @@
             scrollToBottom();
         }
 
-        function appendAIMessage(text) {
+        function appendAIMessage(text, agent = null) {
+            const displayAgent = agent || currentAgent;
             const msgDiv = document.createElement('div');
             msgDiv.className = "flex items-start gap-4 animate-[fadeIn_0.5s_ease-out_both]";
             msgDiv.innerHTML = `
-                <div class="size-10 rounded-full bg-surface-dark border ${currentAgent.border_color} flex items-center justify-center shrink-0 shadow-lg group relative">
-                    <span class="material-symbols-outlined ${currentAgent.color} text-xl">${currentAgent.avatar_icon}</span>
+                <div class="size-10 rounded-full bg-surface-dark border ${displayAgent.border_color} flex items-center justify-center shrink-0 shadow-lg group relative">
+                    <span class="material-symbols-outlined ${displayAgent.color} text-xl">${displayAgent.avatar_icon}</span>
                     <div class="absolute -bottom-1 -right-1 size-3 bg-surface-dark rounded-full border border-surface-border flex items-center justify-center">
-                        <span class="size-1.5 rounded-full ${currentAgent.color.replace('text-', 'bg-')}"></span>
+                        <span class="size-1.5 rounded-full ${displayAgent.color.replace('text-', 'bg-')}"></span>
                     </div>
                 </div>
                 <div class="flex flex-col gap-1.5 max-w-[85%]">
                     <div class="flex items-baseline justify-between gap-4">
                         <span class="text-sm font-bold text-white flex items-center gap-2">
-                            ${currentAgent.name}
-                            <span class="text-[10px] font-normal px-1.5 py-0.5 rounded-full border ${currentAgent.border_color} ${currentAgent.color} bg-surface-dark/50 uppercase tracking-wider">${currentAgent.role}</span>
+                            ${displayAgent.name}
+                            <span class="text-[10px] font-normal px-1.5 py-0.5 rounded-full border ${displayAgent.border_color} ${displayAgent.color} bg-surface-dark/50 uppercase tracking-wider">${displayAgent.role}</span>
                         </span>
                     </div>
                     <div class="bg-surface-dark text-gray-100 px-5 py-4 rounded-2xl rounded-tl-none border border-surface-border shadow-sm leading-relaxed message-content">
@@ -945,9 +950,9 @@
                 title: "微积分：理解导数",
                 tag: "数学-101",
                 messages: [
-                    { role: "assistant", content: "Yao！我注意到你今天正在钻研微积分。在开始解题之前，试着问**“为什么”**来加深理解，或者尝试先用自己的话解释这个概念。\n\n这有助于巩固你的神经通路，实现长期记忆。" },
+                    { role: "assistant", content: "Yao！我注意到你今天正在钻研微积分。在开始解题之前，试着问**“为什么”**来加深理解，或者尝试先用自己的话解释这个概念。\n\n这有助于巩固你的神经通路，实现长期记忆。", agentId: "pedagogy" },
                     { role: "user", content: "x² 的导数是什么？" },
-                    { role: "assistant", content: "`x²` 的导数是 `2x`。\n\n**幂法则：**\n对于任意函数 f(x) = xⁿ，其导数为 f'(x) = nxⁿ⁻¹。\n\n为了真正掌握这一点，你能想出一个现实世界的场景，其中变化率随着输入的增加而增加，类似于 x² 吗？" },
+                    { role: "assistant", content: "`x²` 的导数是 `2x`。\n\n**幂法则：**\n对于任意函数 f(x) = xⁿ，其导数为 f'(x) = nxⁿ⁻¹。\n\n为了真正掌握这一点，你能想出一个现实世界的场景，其中变化率随着输入的增加而增加，类似于 x² 吗？", agentId: "pedagogy" },
                     { role: "user", content: "嗯，就像汽车加速那样？" }
                 ]
             },
@@ -1325,7 +1330,9 @@
             // Add Messages
             data.messages.forEach(msg => {
                 if(msg.role === 'ai' || msg.role === 'assistant') {
-                    appendAIMessage(msg.content);
+                    // Use saved agent or default to general (for legacy/mock data)
+                    const msgAgent = msg.agentId ? agents[msg.agentId] : agents.general;
+                    appendAIMessage(msg.content, msgAgent);
                 } else {
                     appendUserMessage(msg.content);
                 }
