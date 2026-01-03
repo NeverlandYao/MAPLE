@@ -51,11 +51,16 @@ async def chat_endpoint(request: ChatRequest):
         
         # Call ModelScope API
         completion = client.chat.completions.create(
-            model="Qwen/Qwen2.5-Coder-7B-Instruct", 
+            model=os.getenv("MS_MODEL", "deepseek-ai/DeepSeek-R1-distill-Qwen-7B"), 
             messages=messages_payload,
-            temperature=0.7
+            temperature=0.6,
+            stream=False, # Keep it false for now as frontend expects full response
+            extra_body={"enable_thinking": False} # Must be False for non-streaming calls
         )
         
+        # DeepSeek R1 often includes reasoning in <think> tags.
+        # We should parse this out if we want to visualize it separately, 
+        # but for now let's just return the content.
         ai_response = completion.choices[0].message.content
         
         # --- LOGGING START ---

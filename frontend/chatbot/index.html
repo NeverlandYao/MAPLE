@@ -73,6 +73,14 @@
             padding: 0.5rem 0;
         }
         .katex { font-size: 1.1em; }
+        
+        /* Selectable Text */
+        .message-content, .message-content * {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display h-screen w-full overflow-hidden flex flex-col md:flex-row antialiased selection:bg-primary selection:text-background-dark">
@@ -532,42 +540,58 @@
                 tech: 0,
                 pedagogy: 0,
                 ethics: 0,
-                general: 0.1 // Base score
+                general: 0 // Base score reduced to 0 to prefer experts
             };
 
-            // Tech Keywords
-            const techKeywords = /(code|python|bug|error|rag|prompt|api|function|debug|algorithm|json|代码|编程|报错|调试|接口|算法)/i;
+            // Tech Keywords - Expanded
+            const techKeywords = /(code|python|bug|error|rag|prompt|api|function|debug|algorithm|json|optimization|performance|database|server|deploy|linux|terminal|script|variable|loop|class|object|inheritance|git|docker|kubernetes|代码|编程|报错|调试|接口|算法|优化|性能|数据库|服务器|部署|脚本|变量|循环|类|对象|继承)/i;
             if (techKeywords.test(lowerText)) scores.tech += 1;
+            // Boost if code block is detected
+            if (/```[\s\S]*?```|`[^`]+`/.test(text)) scores.tech += 0.5;
 
-            // Pedagogy Keywords (Higher weight for explicit teaching context)
-            const pedagogyKeywords = /(student|teach|learn|goal|pbl|scaffolding|curriculum|assessment|bloom|classroom|学生|教学|学习|目标|课程|评估|布鲁姆|课堂|教案)/i;
+            // Pedagogy Keywords - Expanded
+            const pedagogyKeywords = /(student|teach|learn|goal|pbl|scaffolding|curriculum|assessment|bloom|classroom|explain|understand|concept|theory|example|analogy|quiz|test|grade|rubric|feedback|reflection|metacognition|学生|教学|学习|目标|课程|评估|布鲁姆|课堂|教案|解释|理解|概念|理论|例子|类比|测验|测试|评分|反馈|反思|元认知)/i;
             if (pedagogyKeywords.test(lowerText)) scores.pedagogy += 1;
             // Boost if "teach" or "student" appears explicitly
             if (/(teach|classroom|学生|教学|课堂)/i.test(lowerText)) scores.pedagogy += 0.5;
 
-            // Ethics Keywords
-            const ethicsKeywords = /(privacy|bias|legal|copyright|data|risk|safety|harm|policy|regulation|jailbreak|attack|hack|discrimination|隐私|偏见|法律|版权|数据|风险|安全|合规|越狱|攻击|黑客|歧视|暴力|色情|违规)/i;
+            // Ethics Keywords - Expanded
+            const ethicsKeywords = /(privacy|bias|legal|copyright|data|risk|safety|harm|policy|regulation|jailbreak|attack|hack|discrimination|fake|deepfake|propaganda|manipulate|cheat|plagiarism|violence|porn|adult|nsfw|隐私|偏见|法律|版权|数据|风险|安全|合规|越狱|攻击|黑客|歧视|暴力|色情|违规|造假|深度伪造|宣传|操纵|作弊|抄袭)/i;
             if (ethicsKeywords.test(lowerText)) scores.ethics += 1;
 
             // Decision Logic
-            // If "teach" + "RAG" -> Pedagogy should win (teaching a tech topic)
-            // Current scoring: Tech=1 ("RAG"), Pedagogy=1.5 ("教", "目标"). Pedagogy wins.
-            
-            let maxScore = 0;
+            let maxScore = -1; // Allow 0 to be a valid score for selection if general is also 0
             let bestAgent = 'general';
 
             for (const [agent, score] of Object.entries(scores)) {
+                // Strictly greater ensures first defined agent (general) is default if all 0
+                // But we want to prioritize experts if they have ANY match (>0)
                 if (score > maxScore) {
                     maxScore = score;
                     bestAgent = agent;
                 }
             }
             
-            // If scores are tied (e.g. RAG + Bias), maybe prioritize Ethics > Pedagogy > Tech?
-            // Simple tie-breaking by order of iteration or explicit check.
-            // Let's implement explicit tie-breaking if maxScore > 0.1
-            if (maxScore > 0.1) {
-                // Check ties or close calls
+            // Aggressive Tie-breaking / Preference for Experts
+            // If we have ANY non-zero expert score, pick the best one.
+            // If all are 0, we might want to default to Pedagogy or Tech instead of General?
+            // User requested: "try to use expert roles rather than general assistant"
+            
+            if (maxScore === 0) {
+                 // If no keywords matched, analyze context length or other heuristics?
+                 // Or simply default to 'pedagogy' as the most safe "educational" default?
+                 // Let's stick to 'general' only if absolutely nothing matches, 
+                 // BUT lower the threshold for switching.
+                 
+                 // Strategy: If text length > 10, assume it's complex enough for Pedagogy or Tech.
+                 if (text.length > 10) {
+                     // Default to Pedagogy for general inquiries in an educational tool
+                     return 'pedagogy'; 
+                 }
+            }
+            
+            // Standard Tie-breaking for positive scores
+            if (maxScore > 0) {
                 if (scores.ethics >= scores.tech && scores.ethics >= scores.pedagogy && scores.ethics > 0) return 'ethics';
                 if (scores.pedagogy >= scores.tech && scores.pedagogy > 0) return 'pedagogy';
                 if (scores.tech > 0) return 'tech';
@@ -693,19 +717,31 @@
 
             try {
                 // 4. Send to Backend
-                const response = await fetch('http://localhost:8000/api/chat/', {
+                // Use relative URL for API requests to work with Nginx reverse proxy or local dev
+                // If running locally without Nginx, it falls back to explicit localhost:8000 via a small hack or manual change
+                // But for production (Docker/Nginx), relative path /api/chat/ is best.
+                // However, our current local setup has frontend on 3001 and backend on 8000.
+                // So we need a conditional base URL.
+                
+                const apiBase = window.location.hostname === 'localhost' && window.location.port !== '80' && window.location.port !== '' 
+                    ? 'http://localhost:8000' 
+                    : ''; // Empty string means relative path, handled by Nginx proxy
+                    
+                const response = await fetch(`${apiBase}/api/chat/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        session_id: sessionId,
+                        session_id: sessionId || "session_" + Date.now(), // Fallback for safety
                         messages: apiMessageHistory
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    const errText = await response.text();
+                    console.error('API Error:', response.status, errText);
+                    throw new Error(`Server responded with ${response.status}: ${errText}`);
                 }
 
                 const data = await response.json();
@@ -875,7 +911,11 @@
                 // Try to find the content div. 
                 // For dynamic messages I added 'message-content' class.
                 // For static messages, we might need to rely on structure.
-                let contentDiv = messageWrapper.querySelector('.bg-surface-dark.text-gray-100');
+                let contentDiv = messageWrapper.querySelector('.message-content');
+                if(!contentDiv) {
+                     // Fallback for old static structure or portal view if needed
+                     contentDiv = messageWrapper.querySelector('.bg-surface-dark.text-gray-100');
+                }
                 
                 if (contentDiv) {
                     const text = contentDiv.innerText;
@@ -908,8 +948,27 @@
         }
 
 
-        // Event Listeners
-        sendButton.addEventListener('click', () => sendMessage());
+        // // Expose messageHistory globally so Dashboard can access it if needed (via window.parent if embedded, or just as a concept)
+    // But since Dashboard is a separate page, we need a way to pass data.
+    // The cleanest way for "Stateless Analysis" in Dashboard is:
+    // 1. Chatbot saves to localStorage (done).
+    // 2. Dashboard reads from localStorage (done in fetchSessions, but it only gets preview).
+    // 3. We need to update localStorage structure or fetchSessions to get FULL logs.
+    
+    // Actually, analyzeSession in Dashboard calls /api/analyze with session_id.
+    // Backend tries to read file. Fails if file not there.
+    // FIX: Update Chatbot to send logs to backend explicitly for saving?
+    // OR: Dashboard should send the logs from localStorage to backend!
+    
+    // Let's modify Dashboard's analyzeSession to read logs from localStorage and send them.
+    // But wait, Dashboard runs on domain.com/dashboard, Chatbot on domain.com/chatbot.
+    // They share localStorage if on same domain (which they are in our Nginx/FastAPI setup).
+    
+    // So, in Dashboard (frontend/dashboard/index.html), we need to:
+    // 1. Read full logs from localStorage for the session.
+    // 2. Send logs in the request body to /api/analyze.
+    
+    // Let's go back to modifying frontend/dashboard/index.html
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();

@@ -2,8 +2,10 @@ Design.md
 Development.md
 Development_Plan.md
 demo.md
+deploy.md
 Rubic.md
 data/logs/
+backend/data/logs/
 __pycache__/
 *.pyc
 .DS_Store

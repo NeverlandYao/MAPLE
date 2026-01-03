@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import os
 import json
+import re
 from pathlib import Path
 from openai import OpenAI
 
@@ -22,9 +23,9 @@ class AnalyzeRequest(BaseModel):
     logs: List[Dict[str, Any]] = None 
 
 class AnalysisResult(BaseModel):
-    scores: Dict[str, Optional[int]] # Allow None
-    reasoning: Dict[str, str] # New field for dimension-specific reasoning
-    radar_data: List[Optional[int]]
+    scores: Dict[str, Optional[float]] # Allow float
+    reasoning: Dict[str, str] = {} # Default empty
+    radar_data: List[Optional[float]] = [] # Allow float and default empty
     comments: str
 
 # Revised Evidence-Based Scoring System Prompt
@@ -117,14 +118,37 @@ def pre_validate_input(logs: List[Dict[str, Any]]) -> bool:
 async def analyze_session(request: AnalyzeRequest):
     conversation_logs = request.logs
     
-    # ... (Load logs logic same as before)
+    # 1. Fallback to Disk if logs not provided in request (Backward Compatibility)
     if not conversation_logs:
         log_file = DATA_DIR / f"{request.session_id}.json"
         if log_file.exists():
-            with open(log_file, "r", encoding="utf-8") as f:
-                conversation_logs = json.load(f)
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    file_content = json.load(f)
+                    
+                    # Handle if file content is dict with "messages" key (common in exports)
+                    if isinstance(file_content, dict) and "messages" in file_content:
+                        conversation_logs = file_content["messages"]
+                    elif isinstance(file_content, list):
+                        conversation_logs = file_content
+                    else:
+                        print(f"Invalid log format for session {request.session_id}: {type(file_content)}")
+                        # Don't crash, just set empty to trigger 400 later
+                        conversation_logs = []
+            except json.JSONDecodeError:
+                print(f"Invalid JSON in log file: {log_file}")
+                raise HTTPException(status_code=400, detail="Invalid JSON format in session log file.")
+            except Exception as e:
+                print(f"Error reading log file: {e}")
+                raise HTTPException(status_code=500, detail=f"Error reading log file: {str(e)}")
         else:
-            raise HTTPException(status_code=404, detail="Session logs not found")
+            # If also not found on disk, raise 404
+            raise HTTPException(status_code=404, detail="Session logs not found. Please ensure logs are provided or saved.")
+
+    # Ensure logs is a list before processing
+    if not isinstance(conversation_logs, list):
+         # If it's still not a list (e.g. provided in request but wrong type? Pydantic should catch that, but good to be safe)
+         raise HTTPException(status_code=400, detail="Conversation logs must be a list of messages.")
 
     if not conversation_logs or len(conversation_logs) == 0:
          raise HTTPException(status_code=400, detail="Conversation logs are empty")
@@ -151,38 +175,144 @@ async def analyze_session(request: AnalyzeRequest):
 
     try:
         # Call ModelScope/OpenAI API for Analysis
+        # Use a slightly more capable model for analysis if possible, or same DeepSeek
+        # DeepSeek R1 is excellent at reasoning, so it fits the "Evidence-Based Scoring" perfectly.
         completion = client.chat.completions.create(
-            model="Qwen/Qwen2.5-Coder-7B-Instruct",
+            model=os.getenv("MS_MODEL", "deepseek-ai/DeepSeek-R1-distill-Qwen-7B"),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps(conversation_logs, ensure_ascii=False)}
+                {"role": "user", "content": f"对话记录如下：\n{json.dumps(conversation_logs, ensure_ascii=False)}\n\n请严格按照 System Prompt 要求，输出有效的 JSON 格式评分结果。不要输出任何 Markdown 代码块标记之外的文本。"}
             ],
-            temperature=0.2 
+            temperature=0.2,
+            extra_body={"enable_thinking": False} # Must be False for non-streaming calls
         )
         
         raw_response = completion.choices[0].message.content.strip()
         
-        # ... (Clean up response logic)
-        if raw_response.startswith("```json"):
-            raw_response = raw_response[7:]
-        if raw_response.startswith("```"):
-             raw_response = raw_response[3:]
-        if raw_response.endswith("```"):
-            raw_response = raw_response[:-3]
-            
-        result_json = json.loads(raw_response.strip())
+        # DeepSeek R1 output might contain <think>...</think>. We need to strip it to get JSON.
+        # It handles multiline think tags
+        if "<think>" in raw_response:
+             # Remove thinking process to extract JSON
+             raw_response = re.sub(r'<think>[\s\S]*?</think>', '', raw_response, flags=re.DOTALL).strip()
         
-        # Handle Nulls for Radar Data (Convert null to 0 or 1 for visualization?)
-        # Let's keep them as is in scores, but ensure radar_data is valid list
-        # If the model returns null in scores, radar_data might need handling based on frontend
-        # But instructions say: "If irrelevant, return null".
+        # Robust JSON Extraction
+        json_str = raw_response
+        # 1. Try to find content inside ```json ... ``` or ``` ... ```
+        json_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', raw_response, re.IGNORECASE)
+        
+        if json_block_match:
+            json_str = json_block_match.group(1)
+        else:
+            # 2. Fallback: Find first '{' and last '}'
+            start_idx = raw_response.find('{')
+            end_idx = raw_response.rfind('}')
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = raw_response[start_idx:end_idx+1]
+            
+        # Debug: Print cleaned response
+        print(f"Cleaned Analysis Response: {json_str[:100]}...")
+
+        result_json = json.loads(json_str.strip())
+        
+        # 3. Normalize Keys (Chinese to English mapping if needed)
+        # Model might return Chinese keys despite instructions.
+        key_mapping = {
+            "知识与理解": "know_understand",
+            "知识": "know_understand",
+            "理解": "know_understand",
+            "应用与分析": "use_apply",
+            "使用与应用": "use_apply",
+            "应用": "use_apply",
+            "分析": "use_apply",
+            "评估与创造": "evaluate_create",
+            "评估": "evaluate_create",
+            "创造": "evaluate_create",
+            "评价": "evaluate_create",
+            "伦理": "ethics",
+            "道德": "ethics",
+            "ethics": "ethics",
+            "know_understand": "know_understand",
+            "use_apply": "use_apply",
+            "evaluate_create": "evaluate_create"
+        }
+        
+        # Ensure scores dict exists
+        if "scores" not in result_json:
+            result_json["scores"] = {}
+
+        # Normalize scores
+        new_scores = {}
+        # If model returned "rating" instead of scores (hallucination fallback)
+        if not result_json["scores"] and "rating" in result_json:
+             # Assign the single rating to all fields vaguely? Or just keep 0?
+             # Let's keep 0 but put the rating in comments/reasoning
+             pass
+             
+        for k, v in result_json["scores"].items():
+            # Fuzzy match? 
+            normalized_key = key_mapping.get(k)
+            if not normalized_key:
+                # Try to guess from partial match
+                for map_k, map_v in key_mapping.items():
+                    if map_k in k:
+                        normalized_key = map_v
+                        break
+            
+            if normalized_key:
+                new_scores[normalized_key] = v
+        
+        # Ensure all 4 keys exist in scores (default to 0)
+        required_keys = ["know_understand", "use_apply", "evaluate_create", "ethics"]
+        for key in required_keys:
+            if key not in new_scores:
+                new_scores[key] = 0.0
+                
+        result_json["scores"] = new_scores
+
+        # Normalize reasoning
+        if "reasoning" not in result_json:
+             result_json["reasoning"] = {}
+             
+        new_reasoning = {}
+        for k, v in result_json["reasoning"].items():
+            normalized_key = key_mapping.get(k)
+            if not normalized_key:
+                for map_k, map_v in key_mapping.items():
+                    if map_k in k:
+                        normalized_key = map_v
+                        break
+            if normalized_key:
+                new_reasoning[normalized_key] = v
+        result_json["reasoning"] = new_reasoning
+
+        # 4. Auto-Calculate Radar Data if missing or empty
+        # Frontend expects: [use_apply, know_understand, evaluate_create, ethics]
+        
+        if "radar_data" not in result_json or not result_json["radar_data"]:
+            scores = result_json.get("scores", {})
+            result_json["radar_data"] = [
+                scores.get("use_apply", 0) or 0,
+                scores.get("know_understand", 0) or 0,
+                scores.get("evaluate_create", 0) or 0,
+                scores.get("ethics", 0) or 0
+            ]
         
         return AnalysisResult(**result_json)
 
     except json.JSONDecodeError:
-        print(f"Failed to decode Agent response: {raw_response}")
-        # Fallback for parsing error
-        raise HTTPException(status_code=500, detail="Analysis Agent returned invalid JSON")
+        print(f"Failed to decode Agent response: {json_str}")
+        return AnalysisResult(
+            scores={"know_understand": 0, "use_apply": 0, "evaluate_create": 0, "ethics": 0},
+            reasoning={"error": "Analysis model returned invalid JSON. Please try again."},
+            radar_data=[0, 0, 0, 0],
+            comments="系统评分服务暂时繁忙，请重试。"
+        )
     except Exception as e:
-        print(f"Error during analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error during analysis (General/Validation): {e}")
+        # Also return fallback for other errors (like Pydantic validation) to avoid 500 crash
+        return AnalysisResult(
+            scores={"know_understand": 0, "use_apply": 0, "evaluate_create": 0, "ethics": 0},
+            reasoning={"error": f"Analysis failed: {str(e)}"},
+            radar_data=[0, 0, 0, 0],
+            comments="系统评分服务暂时繁忙，请重试。"
+        )
