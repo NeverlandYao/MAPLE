@@ -247,17 +247,48 @@
 
     async function fetchSessions() {
         const listContainer = document.getElementById('session-list');
+        listContainer.innerHTML = ''; // Clear loading state
+
         try {
+            // 1. Fetch from LocalStorage (Primary Source for Serverless/Vercel)
+            const storedSessions = JSON.parse(localStorage.getItem('maple_sessions')) || {};
+            const localSessions = Object.values(storedSessions).sort((a, b) => b.timestamp - a.timestamp);
+
+            if (localSessions.length > 0) {
+                localSessions.forEach(session => {
+                    const date = new Date(session.timestamp).toLocaleString('zh-CN', {
+                        month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+                    
+                    // Generate preview from last user message
+                    const lastUserMsg = session.messages.filter(m => m.role === 'user').pop();
+                    const preview = lastUserMsg ? lastUserMsg.content : "无内容";
+
+                    const item = document.createElement('div');
+                    item.className = "bg-[#28392f]/50 hover:bg-[#28392f] border border-[#28392f] hover:border-primary/30 rounded-xl p-3 cursor-pointer transition-all group";
+                    item.onclick = () => analyzeSession(session.id, item);
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-white text-xs font-bold truncate w-2/3">${session.title || session.id}</span>
+                            <span class="text-[#9db9a8] text-[10px]">${date}</span>
+                        </div>
+                        <p class="text-gray-400 text-xs line-clamp-2 group-hover:text-gray-300 transition-colors">
+                            ${preview}
+                        </p>
+                    `;
+                    listContainer.appendChild(item);
+                });
+                return; // If local sessions found, stop here (Client-side source of truth)
+            }
+
+            // 2. Fallback to Backend (Legacy/Dev)
             const apiBase = window.location.hostname === 'localhost' && window.location.port !== '80' && window.location.port !== '' 
                     ? 'http://localhost:8000' 
                     : '';
                 
-                const response = await fetch(`${apiBase}/api/chat/sessions`);
-                if (!response.ok) throw new Error('Failed to fetch sessions');
-                const sessions = await response.json();
-            
-            listContainer.innerHTML = ''; // Clear loading state
-            sessionCache = {}; // Reset cache
+            const response = await fetch(`${apiBase}/api/chat/sessions`);
+            if (!response.ok) throw new Error('Failed to fetch sessions');
+            const sessions = await response.json();
             
             if (sessions.length === 0) {
                 listContainer.innerHTML = '<p class="text-gray-500 text-xs">暂无历史会话</p>';
@@ -265,16 +296,6 @@
             }
 
             sessions.forEach(session => {
-                // Cache full data if available, but /sessions only returns preview
-                // We will need to fetch full logs if we want to support stateless analysis
-                // But wait, /sessions list endpoint doesn't return full logs.
-                // We should add a new endpoint or update /sessions to return more, OR
-                // Let the backend handle file reading.
-                // Since user asked "data conversation won't be analyzed by backend" implying persistence issue,
-                // The fix is to send logs from frontend (chatbot) to backend (analyze).
-                // BUT Dashboard is a separate page. It doesn't have the chat logs in memory.
-                // It relies on backend persistence.
-                
                 const date = new Date(session.timestamp * 1000).toLocaleString('zh-CN', {
                     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
@@ -296,7 +317,10 @@
 
         } catch (error) {
             console.error(error);
-            listContainer.innerHTML = '<p class="text-red-400 text-xs">加载失败，请检查后端服务</p>';
+            // If local storage was empty and backend failed, show empty state
+            if (listContainer.children.length === 0) {
+                 listContainer.innerHTML = '<p class="text-gray-500 text-xs">暂无历史会话</p>';
+            }
         }
     }
 
