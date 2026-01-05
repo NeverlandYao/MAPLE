@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/frontend/dashboard/index.html"
+    },
+    {
+      "source": "/",
+      "destination": "/frontend/chatbot/index.html"
+    }
+  ]
+}
