@@ -15,3 +15,6 @@ env/
 venv/
 *.log
 backend/.env
+
+node_modules/
+.next/
