@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Spline_Sans } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
-import { Menu } from "lucide-react";
 
 const splineSans = Spline_Sans({
   subsets: ["latin"],
@@ -22,17 +21,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="dark">
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+      </head>
       <body
-        className={`${splineSans.variable} font-sans bg-[#1c1917] text-white h-screen w-full overflow-hidden flex flex-col md:flex-row antialiased selection:bg-[#ffe066] selection:text-[#1c1917]`}
+        className={`${splineSans.variable} font-sans bg-background-dark text-white h-screen w-full overflow-hidden flex flex-col md:flex-row antialiased selection:bg-primary selection:text-background-dark`}
       >
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-[#44403c] bg-[#1c1917]">
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-surface-border bg-background-dark">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#ffe066]">eco</span>
+            <span className="material-symbols-outlined text-primary text-2xl">eco</span>
             <span className="font-bold text-lg">MAPLE</span>
           </div>
           <button className="text-white">
-            <Menu size={24} />
+            <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
         </div>
 

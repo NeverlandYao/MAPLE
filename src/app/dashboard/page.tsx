@@ -3,18 +3,6 @@
 import React, { useState } from 'react';
 import { useChatStore, Session } from '@/store/useChatStore';
 import { RadarChart } from '@/components/charts/RadarChart';
-import { 
-  Download, 
-  Settings, 
-  TrendingUp, 
-  Code, 
-  ShieldCheck, 
-  Lightbulb, 
-  Scale,
-  FileText,
-  RefreshCcw,
-  CheckCircle2
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -67,13 +55,16 @@ export default function DashboardPage() {
             <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">学生表现概览</h1>
           </div>
           <div className="flex gap-2 bg-[#1c2a23] p-1.5 rounded-full border border-[#28392f]">
-            <button className="px-4 py-1.5 rounded-full bg-[#ffe066] text-[#111814] text-sm font-bold shadow-lg shadow-[#ffe066]/20">
+            <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ffe066] text-[#111814] text-sm font-bold shadow-lg shadow-[#ffe066]/20">
+              <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
               本次会话
             </button>
-            <button className="px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+            <button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+              <span className="material-symbols-outlined text-[14px]">calendar_today</span>
               本学期
             </button>
-            <button className="px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+            <button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[#9db9a8] hover:text-white hover:bg-[#28392f] text-sm font-medium transition-colors">
+              <span className="material-symbols-outlined text-[14px]">history</span>
               历史记录
             </button>
           </div>
@@ -93,7 +84,7 @@ export default function DashboardPage() {
                   {totalScore}<span className="text-lg text-[#9db9a8] font-normal">/100</span>
                 </span>
                 <div className="flex items-center text-[#ffe066] text-sm font-medium mt-1">
-                  <TrendingUp size={14} className="mr-1" />
+                  <span className="material-symbols-outlined text-[14px] mr-1">trending_up</span>
                   AI 实时评估
                 </div>
               </div>
@@ -114,26 +105,26 @@ export default function DashboardPage() {
               title="技术驾驭" 
               score={currentAnalysis?.scores?.use_apply ?? '--'} 
               subtitle="提示词工程能力" 
-              icon={<Code size={18} />} 
+              icon={<span className="material-symbols-outlined text-[18px]">code</span>} 
             />
             <ScoreCard 
               title="知识理解" 
               score={currentAnalysis?.scores?.know_understand ?? '--'} 
               subtitle="AI 原理掌握" 
-              icon={<ShieldCheck size={18} />} 
+              icon={<span className="material-symbols-outlined text-[18px]">verified_user</span>} 
               active
             />
             <ScoreCard 
               title="协同创造" 
               score={currentAnalysis?.scores?.evaluate_create ?? '--'} 
               subtitle="思维拓展指标" 
-              icon={<Lightbulb size={18} />} 
+              icon={<span className="material-symbols-outlined text-[18px]">lightbulb</span>} 
             />
             <ScoreCard 
               title="伦理责任" 
               score={currentAnalysis?.scores?.ethics ?? '--'} 
               subtitle="合规使用与安全" 
-              icon={<Scale size={18} />} 
+              icon={<span className="material-symbols-outlined text-[18px]">balance</span>} 
               className="hidden xl:flex"
             />
           </div>
@@ -145,7 +136,7 @@ export default function DashboardPage() {
         <div className="p-6 border-b border-[#28392f]">
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-[#ffe066]/20 p-2 rounded-lg text-[#ffe066]">
-              <FileText size={20} />
+              <span className="material-symbols-outlined text-[20px]">description</span>
             </div>
             <h2 className="text-xl font-bold text-white">AI 评价</h2>
           </div>
@@ -185,10 +176,10 @@ export default function DashboardPage() {
                       {session.messages[session.messages.length - 1]?.content || '暂无消息'}
                     </p>
                     {analyzingId === session.id && (
-                      <RefreshCcw size={12} className="text-[#ffe066] animate-spin ml-2" />
+                      <span className="material-symbols-outlined text-[12px] text-[#ffe066] animate-spin ml-2">refresh</span>
                     )}
                     {session.lastAnalysis && analyzingId !== session.id && (
-                      <CheckCircle2 size={12} className="text-[#ffe066] ml-2" />
+                      <span className="material-symbols-outlined text-[12px] text-[#ffe066] ml-2">check_circle</span>
                     )}
                   </div>
                 </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Plus, Puzzle as Extension } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (content: string) => void;
@@ -67,14 +66,14 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
           
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" className="p-2 rounded-full hover:bg-white/10 text-gray-400 transition-colors">
-              <Mic size={20} />
+              <span className="material-symbols-outlined text-[20px]">mic</span>
             </button>
             <button 
               type="submit"
               disabled={!input.trim() || disabled}
-              className="p-2.5 rounded-full bg-[#ffe066] text-[#1c1917] disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-transform"
+              className="p-2.5 rounded-full bg-[#ffe066] text-[#1c1917] disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-transform flex items-center justify-center"
             >
-              <Send size={18} />
+              <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
             </button>
           </div>
         </form>

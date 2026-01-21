@@ -20,6 +20,7 @@ interface ChatState {
   currentSessionId: string | null;
   addSession: (title: string) => string;
   addMessage: (sessionId: string, message: Omit<Message, 'timestamp'>) => void;
+  updateMessageContent: (sessionId: string, index: number, content: string) => void;
   setCurrentSession: (id: string | null) => void;
   updateSessionAnalysis: (sessionId: string, analysis: any) => void;
   deleteSession: (id: string) => void;
@@ -60,6 +61,26 @@ export const useChatStore = create<ChatState>()(
                 ...session,
                 messages: [...session.messages, { ...message, timestamp: Date.now() }],
                 timestamp: Date.now(),
+              },
+            },
+          };
+        });
+      },
+
+      updateMessageContent: (sessionId, index, content) => {
+        set((state) => {
+          const session = state.sessions[sessionId];
+          if (!session || !session.messages[index]) return state;
+
+          const newMessages = [...session.messages];
+          newMessages[index] = { ...newMessages[index], content };
+
+          return {
+            sessions: {
+              ...state.sessions,
+              [sessionId]: {
+                ...session,
+                messages: newMessages,
               },
             },
           };

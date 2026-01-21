@@ -7,7 +7,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { cn } from '@/lib/utils';
-import { Copy, ThumbsUp } from 'lucide-react';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system';
@@ -24,12 +23,15 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
     )}>
       <div className={cn(
         "size-10 rounded-full flex items-center justify-center shrink-0 shadow-lg",
-        isAssistant ? "bg-[#292524] border border-[#44403c]" : "bg-gradient-to-br from-orange-400 to-yellow-600"
+        isAssistant ? "bg-surface-dark border border-surface-border" : "bg-gradient-to-br from-orange-400 to-yellow-600"
       )}>
         {isAssistant ? (
-          <span className="material-symbols-outlined text-[#ffe066] text-xl">smart_toy</span>
+          <span className="material-symbols-outlined text-primary text-xl">smart_toy</span>
         ) : (
-          <span className="material-symbols-outlined text-white text-xl">person</span>
+          // User avatar - in old HTML it was empty div with gradient, but we can put an icon or keep empty if we want exact match. 
+          // The old HTML had: <div class="size-10 ... bg-gradient..." data-alt="User avatar"></div>
+          // So no icon for user.
+          null
         )}
       </div>
 
@@ -37,33 +39,40 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
         "flex flex-col gap-1.5 max-w-[85%]",
         !isAssistant && "items-end"
       )}>
-        <span className="text-sm font-bold text-white">
-          {isAssistant ? 'MAPLE' : '你'}
-        </span>
+        <div className={cn("flex items-baseline justify-between gap-4", !isAssistant && "justify-end")}>
+           <span className="text-sm font-bold text-white">
+            {isAssistant ? 'MAPLE' : '你'}
+           </span>
+        </div>
         
         <div className={cn(
-          "px-5 py-4 rounded-2xl shadow-sm leading-relaxed",
+          "px-5 py-4 rounded-2xl shadow-sm leading-relaxed message-content overflow-hidden",
           isAssistant 
-            ? "bg-[#292524] text-gray-100 rounded-tl-none border border-[#44403c]" 
-            : "bg-[#ffe066] text-[#1c1917] rounded-tr-none font-medium"
+            ? "bg-surface-dark text-gray-100 rounded-tl-none border border-surface-border" 
+            : "bg-primary text-background-dark rounded-tr-none font-medium"
         )}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
             components={{
               p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-              ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
-              code: ({ node, className, children, ...props }: any) => {
+              code: ({ className, children, ...props }: any) => {
                 const match = /language-(\w+)/.exec(className || '');
-                return !props.inline && match ? (
-                  <pre className="bg-[#1c1917] p-3 rounded-lg overflow-x-auto my-2 border border-[#44403c]">
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  </pre>
+                const isInline = !match && !className?.includes('block');
+                
+                return !isInline ? (
+                  <div className="relative group/code my-2">
+                    <pre className={cn(
+                      "overflow-x-auto p-4 rounded-xl bg-background-dark border border-surface-border font-mono text-sm",
+                      className
+                    )}>
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  </div>
                 ) : (
-                  <code className="bg-black/30 px-1.5 py-0.5 rounded text-[#ffe066] font-mono text-sm" {...props}>
+                  <code className="bg-black/30 px-1.5 py-0.5 rounded text-primary font-mono text-sm" {...props}>
                     {children}
                   </code>
                 );
@@ -76,15 +85,15 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
 
         {isAssistant && (
           <div className="flex gap-2 mt-1">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#292524] hover:bg-[#44403c] text-xs font-medium text-gray-400 hover:text-white transition-colors">
-              <ThumbsUp size={14} />
+            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-[16px]">thumb_up</span>
               <span>有帮助</span>
             </button>
             <button 
               onClick={() => navigator.clipboard.writeText(content)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#292524] hover:bg-[#44403c] text-xs font-medium text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-dark hover:bg-surface-border text-xs font-medium text-gray-400 hover:text-white transition-colors"
             >
-              <Copy size={14} />
+              <span className="material-symbols-outlined text-[16px]">content_copy</span>
               <span>复制</span>
             </button>
           </div>

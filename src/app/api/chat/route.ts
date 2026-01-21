@@ -11,22 +11,34 @@ export async function POST(req: NextRequest) {
 
     const client = getAIClient();
 
-    const completion = await client.chat.completions.create({
+    const response = await client.chat.completions.create({
       model: DEFAULT_MODEL,
       messages: messages.map((m: any) => ({
         role: m.role,
         content: m.content,
       })),
       temperature: 0.6,
-      // @ts-ignore - ModelScope specific parameter
-      extra_body: { enable_thinking: false },
+      stream: true,
+      extra_body: { enable_thinking: true },
+    } as any) as any;
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of response) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            controller.enqueue(new TextEncoder().encode(content));
+          }
+        }
+        controller.close();
+      },
     });
 
-    const aiResponse = completion.choices[0].message.content;
-
-    return NextResponse.json({
-      response: aiResponse,
-      timestamp: Date.now() / 1000,
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
     });
   } catch (error: any) {
     console.error('Error in chat API:', error);

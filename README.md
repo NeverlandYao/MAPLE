@@ -1,5 +1,25 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## AI 配置与变量模板
+
+### 环境变量
+在项目根目录创建 `.env` 文件，并参考 `.env.example` 配置以下 AI 相关的环境变量：
+- `MS_API_KEY`: ModelScope 或 OpenAI 的 API Key
+- `MS_BASE_URL`: API 基础路径（默认为 ModelScope）
+- `MS_MODEL`: 使用的模型 ID
+
+### 数据库初始化
+运行以下脚本初始化数据库并填充默认的 AI 变量模板：
+```bash
+npx ts-node scripts/init-db.ts
+```
+
+### 变量模板 (Variable Templates)
+系统支持通过 `variable_templates` 表管理不同的 AI 配置方案。默认包含以下模板：
+1. **DeepSeek-R1 (ModelScope)**: 针对 ModelScope 优化的 R1 配置。
+2. **OpenAI GPT-4o**: 标准 GPT-4o 配置。
+3. **AI 素养评估专用模板**: MAPLE 系统内置的素养评估提示词优化配置。
+
 ## Getting Started
 
 First, run the development server:
