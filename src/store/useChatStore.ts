@@ -3,8 +3,10 @@ import { persist } from 'zustand/middleware';
 
 export interface Message {
   role: 'user' | 'assistant' | 'system';
+  type?: 'text' | 'agent_switch';
   content: string;
   timestamp: number;
+  agentId?: string;
 }
 
 export interface Session {
@@ -18,10 +20,12 @@ export interface Session {
 interface ChatState {
   sessions: Record<string, Session>;
   currentSessionId: string | null;
+  currentAgentId: string;
   addSession: (title: string) => string;
   addMessage: (sessionId: string, message: Omit<Message, 'timestamp'>) => void;
   updateMessageContent: (sessionId: string, index: number, content: string) => void;
   setCurrentSession: (id: string | null) => void;
+  setCurrentAgent: (agentId: string) => void;
   updateSessionAnalysis: (sessionId: string, analysis: any) => void;
   deleteSession: (id: string) => void;
 }
@@ -31,6 +35,7 @@ export const useChatStore = create<ChatState>()(
     (set) => ({
       sessions: {},
       currentSessionId: null,
+      currentAgentId: 'general',
 
       addSession: (title) => {
         const id = `session_${Date.now()}`;
@@ -45,6 +50,7 @@ export const useChatStore = create<ChatState>()(
             },
           },
           currentSessionId: id,
+          currentAgentId: 'general',
         }));
         return id;
       },
@@ -88,6 +94,8 @@ export const useChatStore = create<ChatState>()(
       },
 
       setCurrentSession: (id) => set({ currentSessionId: id }),
+
+      setCurrentAgent: (agentId) => set({ currentAgentId: agentId }),
 
       updateSessionAnalysis: (sessionId, analysis) => {
         set((state) => {

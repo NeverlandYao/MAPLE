@@ -5,38 +5,21 @@ import { useChatStore } from '@/store/useChatStore';
 import { PortalView } from '@/components/chat/PortalView';
 import { ChatView } from '@/components/chat/ChatView';
 
+import { detectIntent, AGENTS } from '@/lib/ai/agents';
+
 export default function Home() {
   const { 
     sessions, 
     currentSessionId, 
+    currentAgentId,
     addMessage, 
     addSession,
     setCurrentSession,
+    setCurrentAgent,
     updateMessageContent
   } = useChatStore();
 
   const currentSession = currentSessionId ? sessions[currentSessionId] : null;
-
-  // Initial session setup
-  useEffect(() => {
-    // If no session exists at all, we might not want to create one immediately until user types in PortalView.
-    // However, ChatView needs a session.
-    // Let's say: 
-    // - If currentSessionId is null, show PortalView.
-    // - If user sends message from PortalView, create session and switch to ChatView (or just add to current if we create one hidden).
-    
-    // Actually, PortalView "Where should we start?" implies starting a new thread.
-    
-    if (!currentSessionId) {
-      const sessionIds = Object.keys(sessions);
-      if (sessionIds.length > 0) {
-        // If there are sessions, select the most recent one? 
-        // Or keep it null to show PortalView? 
-        // The old HTML shows PortalView by default if "no active chat" or just "home".
-        // Let's assume if no session selected, show PortalView.
-      }
-    }
-  }, [currentSessionId, sessions]);
 
   const handleSendMessage = async (content: string) => {
     let sessionId = currentSessionId;
@@ -47,26 +30,50 @@ export default function Home() {
       setCurrentSession(sessionId);
     }
 
-    // Add User Message
-    addMessage(sessionId, { role: 'user', content });
+    // 1. Add User Message first
+    addMessage(sessionId, { role: 'user', type: 'text', content });
+
+    // 2. Detect Intent and Switch Agent
+    const detectedAgentId = detectIntent(content);
+    if (detectedAgentId !== currentAgentId) {
+      // Add a switch notification message to the store AFTER user message
+      addMessage(sessionId, { 
+        role: 'system', 
+        type: 'agent_switch',
+        content: detectedAgentId 
+      });
+      setCurrentAgent(detectedAgentId);
+    }
 
     try {
       // Get the latest messages for context
       const session = useChatStore.getState().sessions[sessionId];
-      const messages = session.messages;
+      const messages = [...session.messages];
+      
+      // Inject System Prompt for current agent
+      const currentAgent = AGENTS[useChatStore.getState().currentAgentId];
+      const messagesWithSystem = [
+        { role: 'system' as const, content: currentAgent.system_prompt },
+        ...messages.map(m => ({ role: m.role, content: m.content }))
+      ];
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          messages: messages 
+          messages: messagesWithSystem 
         }),
       });
 
       if (!response.ok) throw new Error('Chat failed');
 
-      // Create an initial empty assistant message
-      addMessage(sessionId, { role: 'assistant', content: '' });
+      // Create an initial empty assistant message with the current agentId
+      addMessage(sessionId, { 
+        role: 'assistant', 
+        type: 'text',
+        content: '', 
+        agentId: useChatStore.getState().currentAgentId 
+      });
       const assistantMessageIndex = useChatStore.getState().sessions[sessionId].messages.length - 1;
 
       const reader = response.body?.getReader();

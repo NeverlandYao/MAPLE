@@ -2,10 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { AGENTS } from '@/lib/ai/agents';
+import { useChatStore } from '@/store/useChatStore';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
+  type?: 'text' | 'agent_switch';
   content: string;
+  agentId?: string;
 }
 
 interface ChatViewProps {
@@ -18,6 +23,8 @@ export const ChatView: React.FC<ChatViewProps> = ({ sessionTitle, messages, onSe
   const [input, setInput] = useState('');
   const [startTime, setStartTime] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentAgentId = useChatStore(state => state.currentAgentId);
+  const currentAgent = AGENTS[currentAgentId] || AGENTS.general;
 
   useEffect(() => {
     const now = new Date();
@@ -58,9 +65,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ sessionTitle, messages, onSe
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 bg-surface-dark rounded-full p-1 pl-4 border border-surface-border">
             <span className="text-xs font-medium text-gray-300">学习模式</span>
-            <button className="bg-primary text-background-dark rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1 shadow-sm">
-              <span className="material-symbols-outlined text-[16px]">school</span>
-              活跃
+            <button className={cn(
+              "rounded-full px-3 py-1 text-xs font-bold flex items-center gap-1 shadow-sm border transition-all duration-300",
+              currentAgent.id === 'general' ? "bg-primary text-background-dark border-primary" : cn("bg-surface-dark text-white", currentAgent.border_color)
+            )}>
+              <span className={cn("material-symbols-outlined text-[16px]", currentAgent.id !== 'general' && currentAgent.color)}>
+                {currentAgent.avatar_icon}
+              </span>
+              {currentAgent.id === 'general' ? '活跃' : currentAgent.name}
             </button>
           </div>
           <button className="size-10 flex items-center justify-center rounded-full bg-surface-dark text-white hover:bg-surface-border transition-colors">
@@ -80,8 +92,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ sessionTitle, messages, onSe
           </div>
 
           {messages.map((msg, idx) => (
-            <ChatMessage key={idx} role={msg.role} content={msg.content} />
+            <ChatMessage 
+              key={idx} 
+              role={msg.role} 
+              content={msg.content} 
+              agentId={msg.agentId} 
+              type={msg.type}
+            />
           ))}
+
           <div ref={messagesEndRef} />
         </div>
       </div>

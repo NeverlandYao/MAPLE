@@ -6,15 +6,35 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { cn } from '@/lib/utils';
+import { cn, preprocessLaTeX } from '@/lib/utils';
+
+import { AGENTS } from '@/lib/ai/agents';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  agentId?: string;
+  type?: 'text' | 'agent_switch';
 }
 
-export const ChatMessage = ({ role, content }: ChatMessageProps) => {
+export const ChatMessage = ({ role, content, agentId, type = 'text' }: ChatMessageProps) => {
   const isAssistant = role === 'assistant';
+  const isAgentSwitch = type === 'agent_switch';
+  const agent = (isAgentSwitch ? AGENTS[content] : (agentId ? AGENTS[agentId] : AGENTS.general)) || AGENTS.general;
+
+  if (isAgentSwitch) {
+    return (
+      <div className="flex justify-center animate-fade-in">
+        <div className={cn(
+          "flex items-center gap-2 bg-surface-dark border px-4 py-2 rounded-full shadow-lg",
+          agent.border_color
+        )}>
+          <span className={cn("material-symbols-outlined text-sm", agent.color)}>swap_horiz</span>
+          <span className="text-xs text-gray-300">Switching to <span className={cn("font-bold", agent.color)}>{agent.name}</span></span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -22,17 +42,17 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
       !isAssistant && "flex-row-reverse"
     )}>
       <div className={cn(
-        "size-10 rounded-full flex items-center justify-center shrink-0 shadow-lg",
-        isAssistant ? "bg-surface-dark border border-surface-border" : "bg-gradient-to-br from-orange-400 to-yellow-600"
+        "size-10 rounded-full flex items-center justify-center shrink-0 shadow-lg relative group",
+        isAssistant ? cn("bg-surface-dark border", agent.border_color) : "bg-gradient-to-br from-orange-400 to-yellow-600"
       )}>
         {isAssistant ? (
-          <span className="material-symbols-outlined text-primary text-xl">smart_toy</span>
-        ) : (
-          // User avatar - in old HTML it was empty div with gradient, but we can put an icon or keep empty if we want exact match. 
-          // The old HTML had: <div class="size-10 ... bg-gradient..." data-alt="User avatar"></div>
-          // So no icon for user.
-          null
-        )}
+          <>
+            <span className={cn("material-symbols-outlined text-xl", agent.color)}>{agent.avatar_icon}</span>
+            <div className="absolute -bottom-1 -right-1 size-3 bg-surface-dark rounded-full border border-surface-border flex items-center justify-center">
+              <span className={cn("size-1.5 rounded-full", agent.color.replace('text-', 'bg-'))}></span>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className={cn(
@@ -40,8 +60,19 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
         !isAssistant && "items-end"
       )}>
         <div className={cn("flex items-baseline justify-between gap-4", !isAssistant && "justify-end")}>
-           <span className="text-sm font-bold text-white">
-            {isAssistant ? 'MAPLE' : '你'}
+           <span className="text-sm font-bold text-white flex items-center gap-2">
+            {isAssistant ? (
+              <>
+                {agent.name}
+                <span className={cn(
+                  "text-[10px] font-normal px-1.5 py-0.5 rounded-full border bg-surface-dark/50 uppercase tracking-wider",
+                  agent.border_color,
+                  agent.color
+                )}>
+                  {agent.role}
+                </span>
+              </>
+            ) : '你'}
            </span>
         </div>
         
@@ -79,7 +110,7 @@ export const ChatMessage = ({ role, content }: ChatMessageProps) => {
               },
             }}
           >
-            {content}
+            {preprocessLaTeX(content)}
           </ReactMarkdown>
         </div>
 
