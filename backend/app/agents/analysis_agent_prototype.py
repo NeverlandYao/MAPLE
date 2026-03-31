@@ -50,18 +50,6 @@ def mock_analyze_session(conversation_logs: List[Dict[str, str]]):
     print("\n--- Input Conversation Logs ---")
     print(json.dumps(conversation_logs, indent=2, ensure_ascii=False))
     
-    # Mock Response
-    return {
-        "scores": {
-            "co_creativity": 85,
-            "evaluation": 70,
-            "technical": 60,
-            "ethics": 95
-        },
-        "comments": "该学生在协同创造力方面表现出色，能够引导AI进行多轮迭代。但在技术应用上，Prompt 较为简单，缺乏高级技巧。伦理意识较强。",
-        "radar_data": [85, 70, 60, 95]
-    }
-
 if __name__ == "__main__":
     # Test Data
     mock_logs = [

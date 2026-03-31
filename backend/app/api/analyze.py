@@ -1,318 +1,420 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-import os
 import json
+import math
+import os
 import re
-from pathlib import Path
-from openai import OpenAI
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from app.config import load_backend_env
+from app.database.db import load_conversation_log_db, save_dispatcher_log_db, save_judge_result_db
+from app.llm import chat_completion_with_fallback
 
 router = APIRouter()
+load_backend_env()
 
-# Initialize OpenAI client (sharing config from chat.py implicitly via env)
-client = OpenAI(
-    api_key=os.getenv("MS_API_KEY"),
-    base_url=os.getenv("MS_BASE_URL")
-)
+VALID_DIMENSIONS = ["know_understand", "use_apply", "evaluate_create", "ethics"]
 
-DATA_DIR = Path("data/logs")
 
 class AnalyzeRequest(BaseModel):
     session_id: str
-    # logs are optional in request because we can load them from disk if session_id is provided
-    logs: List[Dict[str, Any]] = None 
+    logs: Optional[List[Dict[str, Any]]] = None
+
+
+class TurnAttribution(BaseModel):
+    turn_index: int
+    role: str
+    content: str
+    dimension: str
+    confidence: Optional[float] = None
+    reason: str
+
+
+class TrajectoryFeatures(BaseModel):
+    dimension_diversity: float
+    jump_density: float
+    ethics_reached: bool
+    longest_stay_dimension: str
+    longest_stay_rounds: int
+    pattern: str
+
 
 class AnalysisResult(BaseModel):
-    scores: Dict[str, Optional[float]] # Allow float
-    reasoning: Dict[str, str] = {} # Default empty
-    radar_data: List[Optional[float]] = [] # Allow float and default empty
+    scores: Dict[str, Optional[float]]
+    reasoning: Dict[str, str] = Field(default_factory=dict)
+    radar_data: List[Optional[float]] = Field(default_factory=list)
     comments: str
+    turn_attributions: List[TurnAttribution] = Field(default_factory=list)
+    trajectory_features: TrajectoryFeatures
 
-# Revised Evidence-Based Scoring System Prompt
-SYSTEM_PROMPT = """
-### 评分方法论：加权命中/未命中 (Binary Hit/Miss with Weights)
 
-你是 MAPLE 系统的核心评分引擎，目标是基于学生是否**“命中 (Hit)”**高阶素养行为，计算每个维度（0-25分）的加权得分，并解释原因。
+SCORE_PROMPT = """
+你是 MAPLE 系统评分引擎。请基于用户对话行为评估四维分数（0-25）。
+维度：
+- know_understand
+- use_apply
+- evaluate_create
+- ethics
 
-### 评分量表 (Hit/Miss 逻辑)
-#### 1. 知识与理解 (Know & Understand)
-- **权重**：1.5 (难度：中等)
-- **命中 (HIT, +1)**：明确提及模型限制（如“知识截止”、“幻觉”）或主动纠正技术概念错误。
-- **未命中 (MISS, 0)**：使用错误术语（如把 LLM 叫成“搜索引擎”）或未表现出对 AI 原理的理解。
-- **评分标准**：
-    - 25分 (深度理解)：明确提及幻觉、知识截止、Token限制等技术原理，或主动纠正 AI 的错误。
-    - 15分 (基本理解)：术语使用准确（如 Prompt, Context），清楚 AI 的辅助定位，能区分搜索与生成。
-    - 5分 (表面交互)：仅把 AI 当作搜索引擎或聊天机器人，术语模糊。
-    - 0分 (概念错误/无关)：存在明显概念错误（如“你有意识吗”）或完全无关。
+规则：
+1) 按行为证据评分，不按内容正确性评分。
+2) 每个维度必须给出中文理由。
+3) 输出必须是 JSON，不要 markdown。
 
-#### 2. 使用与应用 (Use & Apply)
-- **权重**：1.0 (难度：低)
-- **命中 (HIT, +1)**：用户明确定义了角色 (Persona)、任务 (Task) **和** 约束条件 (Constraints)（即结构化提示词），或使用了思维链 (CoT)/少样本 (Few-shot)。
-- **未命中 (MISS, 0)**：用户发送通用的单句指令 (Zero-shot) 或简单的对话填充词。
-- **评分标准**：
-    - 25分 (高级策略)：应用思维链 (CoT)、少样本 (Few-shot) 或复杂的角色扮演技巧。
-    - 15分 (结构化提示)：提示词包含明确的角色、任务、约束条件 (Constraints) 或上下文。
-    - 5分 (基础指令)：仅发送简单的单轮指令 (Zero-shot) 或日常对话。
-    - 0分 (无效/沉默)：无意义的输入或未进行任务相关的操作。
-
-#### 3. 评估与创造 (Evaluate & Create)
-- **权重**：2.0 (难度：高)
-- **命中 (HIT, +1)**：用户明确质疑 AI 输出的有效性（事实核查、索要来源），或注入了深刻的教学洞察（共创）。
-- **未命中 (MISS, 0)**：用户在未验证的情况下接受 AI 回复，或仅修改错别字。
-- **评分标准**：
-    - 25分 (批判性评估/共创)：明确的事实核查、逻辑质疑、索要来源或高阶的观点融合。
-    - 15分 (实质性修改)：对生成内容进行大幅重写、结构调整或风格迁移。
-    - 5分 (基本检查)：简单的格式调整、错别字修正或确认收到（表现出最小限度的“人在回路”）。
-    - 0分 (盲目接受)：完全复制粘贴或无条件接受，未展现任何验证迹象。
-
-#### 4. 伦理 (Ethics)
-- **权重**：1.5 (难度：中等)
-- **命中 (HIT, +1)**：用户主动添加安全约束（如“确保无性别偏见”）或询问潜在风险。
-- **未命中 (MISS, 0)**：用户无视潜在风险或未提及任何伦理参数。
-- **评分标准**：
-    - 25分 (前置防御)：在生成前主动设定伦理边界（如“不含偏见”、“保护隐私”）。
-    - 15分 (主动询问)：对潜在的伦理风险、数据安全或算法偏见提出疑问。
-    - 5分 (被动合规)：确认收到系统的伦理警告，或在被提示后进行修正。
-    - 0分 (忽视/沉默)：无视潜在风险，或未涉及任何伦理维度的思考。
-
-### 输出格式
-**必须是有效的 JSON 格式**。
-**评语必须使用简体中文**。
+格式：
 {
-    "scores": {
-        "know_understand": 0-25,
-        "use_apply": 0-25,
-        "evaluate_create": 0-25,
-        "ethics": 0-25
-    },
-    "reasoning": {
-        "know_understand": "为什么给这个分？解释Hit了什么或Miss了什么...",
-        "use_apply": "...",
-        "evaluate_create": "...",
-        "ethics": "..."
-    },
-    "comments": "总体中文评语...",
-    "radar_data": [score1, score2, score3, score4] 
+  "scores": {
+    "know_understand": 0-25,
+    "use_apply": 0-25,
+    "evaluate_create": 0-25,
+    "ethics": 0-25
+  },
+  "reasoning": {
+    "know_understand": "中文理由",
+    "use_apply": "中文理由",
+    "evaluate_create": "中文理由",
+    "ethics": "中文理由"
+  },
+  "comments": "总体中文评语",
+  "radar_data": [score1, score2, score3, score4]
 }
 """
 
-def pre_validate_input(logs: List[Dict[str, Any]]) -> bool:
-    """
-    代码层保障：最小长度过滤器
-    如果输入太短/无效，无法证明具备素养，直接返回 False。
-    """
-    user_messages = [msg['content'] for msg in logs if msg['role'] == 'user']
+
+ATTRIBUTION_PROMPT = """
+你是 MAPLE 维度归因器。请对“每一轮用户发言”做语义归因，不要使用关键词匹配式判断。
+
+维度定义：
+- know_understand: 对AI原理、限制、概念理解
+- use_apply: 任务执行、提示词组织、应用操作
+- evaluate_create: 质疑、验证、改写、共创
+- ethics: 隐私、公平、风险、合规、安全
+
+输出要求：
+1) 必须返回 JSON，不要 markdown。
+2) 每条包含 turn_index, dimension, confidence(0-1), reason(中文，简洁)。
+3) dimension 必须是四个维度之一。
+
+格式：
+{
+  "attributions": [
+    {"turn_index": 1, "dimension": "use_apply", "confidence": 0.88, "reason": "用户在明确任务执行方式。"}
+  ]
+}
+"""
+
+
+def _extract_json(raw_text: str) -> Dict[str, Any]:
+    cleaned = (raw_text or "").strip()
+    if "</think>" in cleaned:
+        cleaned = re.sub(r"^[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE).strip()
+    else:
+        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE).strip()
+
+    block = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", cleaned, re.IGNORECASE)
+    if block:
+        return json.loads(block.group(1))
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return json.loads(cleaned[start : end + 1])
+
+    return json.loads(cleaned)
+
+
+def _safe_dimension(value: str) -> str:
+    return value if value in VALID_DIMENSIONS else "use_apply"
+
+
+def _pre_validate_input(logs: List[Dict[str, Any]]) -> bool:
+    user_messages = [msg.get("content", "") for msg in logs if msg.get("role") == "user"]
     if not user_messages:
         return False
-    
-    # 检查用户输入总长度（例如 > 5 字符）
-    # GLAT 逻辑：沉默是干扰项（0分），但为了节省 API 调用，我们在此处过滤“噪音”。
-    # 如果在此处过滤，我们将返回默认的低分结果。
     total_length = sum(len(msg.strip()) for msg in user_messages)
-    if total_length < 5:
-        return False
-        
-    return True
+    return total_length >= 5
+
+
+def _sanitize_logs(logs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [m for m in logs if m.get("role") in {"user", "assistant", "ai"}]
+
+
+def _fallback_attributions(user_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    result: List[Dict[str, Any]] = []
+    for turn in user_turns:
+        text = turn.get("content", "").lower()
+        dimension = "use_apply"
+        reason = "默认归入应用维度。"
+        if any(word in text for word in ["隐私", "偏见", "版权", "合规", "safety", "privacy", "bias"]):
+            dimension = "ethics"
+            reason = "内容涉及安全/伦理风险。"
+        elif any(word in text for word in ["为什么", "原理", "幻觉", "token", "知识截止"]):
+            dimension = "know_understand"
+            reason = "内容涉及AI原理或理解。"
+        elif any(word in text for word in ["验证", "来源", "证据", "重写", "改写", "评估"]):
+            dimension = "evaluate_create"
+            reason = "内容体现验证或共创。"
+        result.append(
+            {
+                "turn_index": turn["turn_index"],
+                "dimension": dimension,
+                "confidence": 0.4,
+                "reason": reason,
+            }
+        )
+    return result
+
+
+def _compute_trajectory(attributions: List[Dict[str, Any]]) -> TrajectoryFeatures:
+    if not attributions:
+        return TrajectoryFeatures(
+            dimension_diversity=0.0,
+            jump_density=0.0,
+            ethics_reached=False,
+            longest_stay_dimension="none",
+            longest_stay_rounds=0,
+            pattern="insufficient_data",
+        )
+
+    dims = [_safe_dimension(item.get("dimension", "use_apply")) for item in attributions]
+    n = len(dims)
+    counts: Dict[str, int] = {d: 0 for d in VALID_DIMENSIONS}
+    for d in dims:
+        counts[d] += 1
+
+    # Shannon entropy (base 2)
+    entropy = 0.0
+    for c in counts.values():
+        if c == 0:
+            continue
+        p = c / n
+        entropy -= p * math.log2(p)
+
+    jumps = 0
+    longest_dim = dims[0]
+    longest_rounds = 1
+    current_dim = dims[0]
+    current_run = 1
+    for i in range(1, n):
+        if dims[i] != dims[i - 1]:
+            jumps += 1
+        if dims[i] == current_dim:
+            current_run += 1
+        else:
+            if current_run > longest_rounds:
+                longest_rounds = current_run
+                longest_dim = current_dim
+            current_dim = dims[i]
+            current_run = 1
+    if current_run > longest_rounds:
+        longest_rounds = current_run
+        longest_dim = current_dim
+
+    jump_density = jumps / n
+    ethics_reached = counts["ethics"] > 0
+
+    if entropy >= 1.5 and jump_density >= 0.35 and ethics_reached:
+        pattern = "balanced_reflective"
+    elif longest_rounds >= max(3, math.ceil(n * 0.6)):
+        pattern = "focused_depth"
+    else:
+        pattern = "exploratory_transition"
+
+    return TrajectoryFeatures(
+        dimension_diversity=round(entropy, 4),
+        jump_density=round(jump_density, 4),
+        ethics_reached=ethics_reached,
+        longest_stay_dimension=longest_dim,
+        longest_stay_rounds=longest_rounds,
+        pattern=pattern,
+    )
+
+
+def _score_with_model(logs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    raw = chat_completion_with_fallback(
+        messages=[
+            {"role": "system", "content": SCORE_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"对话记录：\n{json.dumps(logs, ensure_ascii=False)}\n"
+                    "请输出 JSON 评分结果。"
+                ),
+            },
+        ],
+        temperature=0.2,
+    )
+    return _extract_json(raw or "{}")
+
+
+def _attribute_with_model(user_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    raw = chat_completion_with_fallback(
+        messages=[
+            {"role": "system", "content": ATTRIBUTION_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"用户发言列表：\n{json.dumps(user_turns, ensure_ascii=False)}\n"
+                    "请只输出 JSON。"
+                ),
+            },
+        ],
+        temperature=0.0,
+    )
+    parsed = _extract_json(raw or "{}")
+    rows = parsed.get("attributions", [])
+    if not isinstance(rows, list):
+        return []
+    return rows
+
 
 @router.post("/", response_model=AnalysisResult)
 async def analyze_session(request: AnalyzeRequest):
     conversation_logs = request.logs
-    
-    # 1. Fallback to Disk if logs not provided in request (Backward Compatibility)
+
     if not conversation_logs:
-        log_file = DATA_DIR / f"{request.session_id}.json"
-        if log_file.exists():
-            try:
-                with open(log_file, "r", encoding="utf-8") as f:
-                    file_content = json.load(f)
-                    
-                    # Handle if file content is dict with "messages" key (common in exports)
-                    if isinstance(file_content, dict) and "messages" in file_content:
-                        conversation_logs = file_content["messages"]
-                    elif isinstance(file_content, list):
-                        conversation_logs = file_content
-                    else:
-                        print(f"Invalid log format for session {request.session_id}: {type(file_content)}")
-                        # Don't crash, just set empty to trigger 400 later
-                        conversation_logs = []
-            except json.JSONDecodeError:
-                print(f"Invalid JSON in log file: {log_file}")
-                raise HTTPException(status_code=400, detail="Invalid JSON format in session log file.")
-            except Exception as e:
-                print(f"Error reading log file: {e}")
-                raise HTTPException(status_code=500, detail=f"Error reading log file: {str(e)}")
-        else:
-            # If also not found on disk, raise 404
-            raise HTTPException(status_code=404, detail="Session logs not found. Please ensure logs are provided or saved.")
+        conversation_logs = load_conversation_log_db(request.session_id)
 
-    # Ensure logs is a list before processing
-    if not isinstance(conversation_logs, list):
-         # If it's still not a list (e.g. provided in request but wrong type? Pydantic should catch that, but good to be safe)
-         raise HTTPException(status_code=400, detail="Conversation logs must be a list of messages.")
+    if not isinstance(conversation_logs, list) or len(conversation_logs) == 0:
+        raise HTTPException(status_code=404, detail="No cloud conversation logs found for this session.")
 
-    if not conversation_logs or len(conversation_logs) == 0:
-         raise HTTPException(status_code=400, detail="Conversation logs are empty")
+    conversation_logs = _sanitize_logs(conversation_logs)
 
-    # 1. Code-Level Safeguard (Treat as Miss/Distractor)
-    if not pre_validate_input(conversation_logs):
-        # Return 0 Scores directly (GLAT: Silence = 0)
+    if not _pre_validate_input(conversation_logs):
+        empty_scores = {
+            "know_understand": 0,
+            "use_apply": 0,
+            "evaluate_create": 0,
+            "ethics": 0,
+        }
+        empty_attr: List[TurnAttribution] = []
         return AnalysisResult(
-            scores={
-                "know_understand": 0,
-                "use_apply": 0,
-                "evaluate_create": 0,
-                "ethics": 0
-            },
+            scores=empty_scores,
             reasoning={
-                "know_understand": "输入过短，未展示任何理解。",
+                "know_understand": "输入过短，未展示理解证据。",
                 "use_apply": "输入过短，无法判断应用能力。",
-                "evaluate_create": "沉默或被动交互被视为干扰项。",
-                "ethics": "未提及任何伦理内容。"
+                "evaluate_create": "缺少可评估的验证/共创行为。",
+                "ethics": "未触及伦理相关内容。",
             },
             radar_data=[0, 0, 0, 0],
-            comments="交互内容过少，判定为无效交互（Silence/Distractor），得分为 0。"
+            comments="交互内容过少，判定为无效交互（Silence/Distractor）。",
+            turn_attributions=empty_attr,
+            trajectory_features=_compute_trajectory([]),
         )
 
     try:
-        # Call ModelScope/OpenAI API for Analysis
-        # Use a slightly more capable model for analysis if possible, or same DeepSeek
-        # DeepSeek R1 is excellent at reasoning, so it fits the "Evidence-Based Scoring" perfectly.
-        completion = client.chat.completions.create(
-            model=os.getenv("MS_MODEL", "deepseek-ai/DeepSeek-R1-distill-Qwen-7B"),
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"对话记录如下：\n{json.dumps(conversation_logs, ensure_ascii=False)}\n\n请严格按照 System Prompt 要求，输出有效的 JSON 格式评分结果。不要输出任何 Markdown 代码块标记之外的文本。"}
-            ],
-            temperature=0.2,
-            extra_body={"enable_thinking": False} # Must be False for non-streaming calls
-        )
-        
-        raw_response = completion.choices[0].message.content.strip()
-        
-        # DeepSeek R1 output might contain <think>...</think>. We need to strip it to get JSON.
-        # It handles multiline think tags
-        if "<think>" in raw_response:
-             # Remove thinking process to extract JSON
-             raw_response = re.sub(r'<think>[\s\S]*?</think>', '', raw_response, flags=re.DOTALL).strip()
-        
-        # Robust JSON Extraction
-        json_str = raw_response
-        # 1. Try to find content inside ```json ... ``` or ``` ... ```
-        json_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', raw_response, re.IGNORECASE)
-        
-        if json_block_match:
-            json_str = json_block_match.group(1)
-        else:
-            # 2. Fallback: Find first '{' and last '}'
-            start_idx = raw_response.find('{')
-            end_idx = raw_response.rfind('}')
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                json_str = raw_response[start_idx:end_idx+1]
-            
-        # Debug: Print cleaned response
-        print(f"Cleaned Analysis Response: {json_str[:100]}...")
+        score_json = _score_with_model(conversation_logs)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Scoring failed: {exc}")
 
-        result_json = json.loads(json_str.strip())
-        
-        # 3. Normalize Keys (Chinese to English mapping if needed)
-        # Model might return Chinese keys despite instructions.
-        key_mapping = {
-            "知识与理解": "know_understand",
-            "知识": "know_understand",
-            "理解": "know_understand",
-            "应用与分析": "use_apply",
-            "使用与应用": "use_apply",
-            "应用": "use_apply",
-            "分析": "use_apply",
-            "评估与创造": "evaluate_create",
-            "评估": "evaluate_create",
-            "创造": "evaluate_create",
-            "评价": "evaluate_create",
-            "伦理": "ethics",
-            "道德": "ethics",
-            "ethics": "ethics",
-            "know_understand": "know_understand",
-            "use_apply": "use_apply",
-            "evaluate_create": "evaluate_create"
+    user_turns = []
+    user_index = 0
+    for msg in conversation_logs:
+        if msg.get("role") != "user":
+            continue
+        user_index += 1
+        user_turns.append(
+            {
+                "turn_index": user_index,
+                "role": "user",
+                "content": msg.get("content", ""),
+            }
+        )
+
+    try:
+        attrs_raw = _attribute_with_model(user_turns)
+        if not attrs_raw:
+            attrs_raw = _fallback_attributions(user_turns)
+    except Exception:
+        attrs_raw = _fallback_attributions(user_turns)
+
+    attr_by_index: Dict[int, Dict[str, Any]] = {}
+    for row in attrs_raw:
+        try:
+            idx = int(row.get("turn_index"))
+        except Exception:
+            continue
+        attr_by_index[idx] = {
+            "dimension": _safe_dimension(str(row.get("dimension", "use_apply"))),
+            "confidence": row.get("confidence"),
+            "reason": str(row.get("reason", "语义归因结果。")),
         }
-        
-        # Ensure scores dict exists
-        if "scores" not in result_json:
-            result_json["scores"] = {}
 
-        # Normalize scores
-        new_scores = {}
-        # If model returned "rating" instead of scores (hallucination fallback)
-        if not result_json["scores"] and "rating" in result_json:
-             # Assign the single rating to all fields vaguely? Or just keep 0?
-             # Let's keep 0 but put the rating in comments/reasoning
-             pass
-             
-        for k, v in result_json["scores"].items():
-            # Fuzzy match? 
-            normalized_key = key_mapping.get(k)
-            if not normalized_key:
-                # Try to guess from partial match
-                for map_k, map_v in key_mapping.items():
-                    if map_k in k:
-                        normalized_key = map_v
-                        break
-            
-            if normalized_key:
-                new_scores[normalized_key] = v
-        
-        # Ensure all 4 keys exist in scores (default to 0)
-        required_keys = ["know_understand", "use_apply", "evaluate_create", "ethics"]
-        for key in required_keys:
-            if key not in new_scores:
-                new_scores[key] = 0.0
-                
-        result_json["scores"] = new_scores
-
-        # Normalize reasoning
-        if "reasoning" not in result_json:
-             result_json["reasoning"] = {}
-             
-        new_reasoning = {}
-        for k, v in result_json["reasoning"].items():
-            normalized_key = key_mapping.get(k)
-            if not normalized_key:
-                for map_k, map_v in key_mapping.items():
-                    if map_k in k:
-                        normalized_key = map_v
-                        break
-            if normalized_key:
-                new_reasoning[normalized_key] = v
-        result_json["reasoning"] = new_reasoning
-
-        # 4. Auto-Calculate Radar Data if missing or empty
-        # Frontend expects: [use_apply, know_understand, evaluate_create, ethics]
-        
-        if "radar_data" not in result_json or not result_json["radar_data"]:
-            scores = result_json.get("scores", {})
-            result_json["radar_data"] = [
-                scores.get("use_apply", 0) or 0,
-                scores.get("know_understand", 0) or 0,
-                scores.get("evaluate_create", 0) or 0,
-                scores.get("ethics", 0) or 0
-            ]
-        
-        return AnalysisResult(**result_json)
-
-    except json.JSONDecodeError:
-        print(f"Failed to decode Agent response: {json_str}")
-        return AnalysisResult(
-            scores={"know_understand": 0, "use_apply": 0, "evaluate_create": 0, "ethics": 0},
-            reasoning={"error": "Analysis model returned invalid JSON. Please try again."},
-            radar_data=[0, 0, 0, 0],
-            comments="系统评分服务暂时繁忙，请重试。"
+    turn_attributions: List[TurnAttribution] = []
+    for turn in user_turns:
+        row = attr_by_index.get(turn["turn_index"])
+        if row is None:
+            row = {
+                "dimension": "use_apply",
+                "confidence": 0.3,
+                "reason": "缺少明确证据，默认归入应用维度。",
+            }
+        turn_attributions.append(
+            TurnAttribution(
+                turn_index=turn["turn_index"],
+                role=turn["role"],
+                content=turn["content"],
+                dimension=row["dimension"],
+                confidence=row.get("confidence"),
+                reason=row["reason"],
+            )
         )
-    except Exception as e:
-        print(f"Error during analysis (General/Validation): {e}")
-        # Also return fallback for other errors (like Pydantic validation) to avoid 500 crash
-        return AnalysisResult(
-            scores={"know_understand": 0, "use_apply": 0, "evaluate_create": 0, "ethics": 0},
-            reasoning={"error": f"Analysis failed: {str(e)}"},
-            radar_data=[0, 0, 0, 0],
-            comments="系统评分服务暂时繁忙，请重试。"
+
+    trajectory = _compute_trajectory([a.model_dump() for a in turn_attributions])
+
+    scores = score_json.get("scores", {})
+    reasoning = score_json.get("reasoning", {})
+    for key in VALID_DIMENSIONS:
+        if key not in scores:
+            scores[key] = 0
+        if key not in reasoning:
+            reasoning[key] = "模型未返回该维度解释。"
+
+    radar_data = score_json.get(
+        "radar_data",
+        [scores.get("know_understand", 0), scores.get("use_apply", 0), scores.get("evaluate_create", 0), scores.get("ethics", 0)],
+    )
+
+    result = AnalysisResult(
+        scores=scores,
+        reasoning=reasoning,
+        radar_data=radar_data,
+        comments=score_json.get("comments", "暂无评语。"),
+        turn_attributions=turn_attributions,
+        trajectory_features=trajectory,
+    )
+
+    # Persist analysis output to cloud DB
+    try:
+        ok_judge = save_judge_result_db(
+            session_id=request.session_id,
+            scores=result.scores,
+            feedback_text=result.comments,
+            reasoning=result.reasoning,
+            radar_data=result.radar_data,
+            trajectory_features=result.trajectory_features.model_dump(),
+            judge_model=os.getenv("MS_MODEL", "deepseek-ai/DeepSeek-R1-distill-Qwen-7B"),
+            metadata={"source": "analyze_endpoint"},
         )
+        if not ok_judge:
+            raise HTTPException(status_code=500, detail="Cloud judge result persistence failed.")
+        for attr in result.turn_attributions:
+            ok_dispatch = save_dispatcher_log_db(
+                session_id=request.session_id,
+                round_no=attr.turn_index,
+                user_utterance=attr.content,
+                assigned_dimension=attr.dimension,
+                confidence=attr.confidence,
+                reason=attr.reason,
+                metadata={"source": "analyze_attribution"},
+            )
+            if not ok_dispatch:
+                raise HTTPException(status_code=500, detail="Cloud dispatcher persistence failed.")
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
+        print(f"Failed to persist analysis artifacts: {exc}")
+        raise HTTPException(status_code=500, detail="Cloud persistence failed during analysis.")
+
+    return result

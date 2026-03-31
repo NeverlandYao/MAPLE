@@ -1,0 +1,17 @@
+from pathlib import Path
+
+
+APP_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = APP_DIR.parent
+PROJECT_ROOT = BACKEND_DIR.parent
+
+BACKEND_DATA_DIR = BACKEND_DIR / "data"
+BACKEND_LOG_DIR = BACKEND_DATA_DIR / "logs"
+
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+CHATBOT_FRONTEND_DIR = FRONTEND_DIR / "chatbot"
+DASHBOARD_FRONTEND_DIR = FRONTEND_DIR / "dashboard"
+
+STATIC_DIR = PROJECT_ROOT / "static"
+STATIC_CHATBOT_DIR = STATIC_DIR / "chatbot"
+STATIC_DASHBOARD_DIR = STATIC_DIR / "dashboard"
